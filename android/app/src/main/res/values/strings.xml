@@ -1,4 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pocketfuse</string>
+    <string name="back">Back</string>
+    <string name="dismiss">Dismiss</string>
+
+    <string name="tab_swap">Swap</string>
+    <string name="tab_live">Live</string>
+    <string name="tab_lab">Lab</string>
+    <string name="tab_puppet">Puppet</string>
+    <string name="tab_server">PC</string>
+
+    <string name="channel_jobs">Swaps in progress</string>
+    <string name="channel_done">Finished swaps</string>
+    <string name="job_title">Swapping on your PC</string>
+    <string name="job_starting">Starting</string>
+    <string name="job_uploading">Uploading %1$s</string>
+    <string name="job_preparing">Setting up the job</string>
+    <string name="job_processing">Your PC is working: %1$d s</string>
+    <string name="job_downloading">Downloading the result</string>
+    <string name="job_done">Done in %1$d s on your PC.</string>
+    <string name="job_done_title">Swap ready</string>
+    <string name="job_failed_title">Swap failed</string>
+    <string name="error_not_paired">No server is paired.</string>
+    <string name="shared_target">Set as the target. Pick a face and swap.</string>
+    <string name="paired_with">Paired with %1$s</string>
+
+    <string name="pair_intro">Pocketfuse runs FaceFusion on your own PC and puts it in your pocket. Nothing goes to a cloud: the phone talks only to your computer, over your Wi-Fi or tailnet.</string>
+    <string name="pair_step_server">1. Start FaceFusion on your PC</string>
+    <string name="pair_run_companion">In the Pocketfuse companion folder, run:</string>
+    <string name="pair_companion_explains">It starts the FaceFusion API on your LAN or Tailscale address with a fresh API key and prints a pairing code.</string>
+    <string name="pair_step_scan">2. Scan the pairing code</string>
+    <string name="pair_scan">Scan code</string>
+    <string name="pair_stop_scan">Stop scanning</string>
+    <string name="pair_step_manual">Or connect by hand</string>
+    <string name="pair_address">Address and port</string>
+    <string name="pair_api_key">API key (FACEFUSION_API_KEY)</string>
+    <string name="pair_connect">Connect</string>
+    <string name="pair_camera_denied">Camera permission is needed to scan. You can connect by hand instead.</string>
+    <string name="pair_not_a_code">That code is not a Pocketfuse pairing code.</string>
+    <string name="pair_bad_address">Enter an address like 192.168.1.20:8000.</string>
+    <string name="pair_security_note">The FaceFusion API speaks plain HTTP. Keep it on your home network or a tailnet, and always set an API key. The key is stored encrypted on this phone.</string>
+
+    <string name="swap_faces">Faces</string>
+    <string name="swap_faces_empty">Add a clear photo of the face to use. Several faces are fine.</string>
+    <string name="swap_faces_hint">Every face here is used as the source.</string>
+    <string name="swap_target">Target</string>
+    <string name="swap_pick">Pick</string>
+    <string name="swap_change">Change</string>
+    <string name="swap_target_empty">Pick a photo or video, or share one to Pocketfuse from any app</string>
+    <string name="swap_preview">Preview on PC</string>
+    <string name="swap_previewing">Asking your PC</string>
+    <string name="swap_preview_time">One frame in %1$d ms</string>
+    <string name="swap_no_frame">Could not read a frame from this file.</string>
+    <string name="swap_options">Options</string>
+    <string name="swap_all_options">All options</string>
+    <string name="swap_enhance">Enhance face</string>
+    <string name="swap_keep_expression">Keep expression</string>
+    <string name="swap_main_person">Main person</string>
+    <string name="swap_everyone">Everyone</string>
+    <string name="swap_model">Swap model</string>
+    <string name="swap_job">This swap</string>
+    <string name="swap_run">Swap on my PC</string>
+    <string name="swap_open_result">Open result</string>
+
+    <string name="options_loading">Loading the server\'s options</string>
+    <string name="options_intro">Every option your FaceFusion server offers, read from the server itself. Changed options are highlighted and used by every swap, preview and live stream.</string>
+    <string name="options_reset">Reset %1$d changed options</string>
+    <string name="options_default">Default</string>
+    <string name="options_apply">Apply</string>
+
+    <string name="results_title">Results</string>
+    <string name="results_empty">Finished swaps appear here.</string>
+    <string name="results_save">Save</string>
+    <string name="results_saved">Saved to your gallery</string>
+    <string name="results_save_failed">Could not save to the gallery</string>
+    <string name="results_share">Share</string>
+    <string name="results_delete">Delete</string>
+
+    <string name="server_load">PC load</string>
+    <string name="server_live">live</string>
+    <string name="server_waiting">waiting</string>
+    <string name="server_no_metrics">Waiting for the first metrics from your PC.</string>
+    <string name="server_gpu">GPU</string>
+    <string name="server_vram">VRAM</string>
+    <string name="server_cpu">CPU</string>
+    <string name="server_memory">Memory</string>
+    <string name="server_temperature">GPU temperature %1$s</string>
+    <string name="server_disk_free">%1$s free on the PC\'s temp drive</string>
+    <string name="server_session">Session</string>
+    <string name="server_connecting">Connecting</string>
+    <string name="server_closed">Not connected</string>
+    <string name="server_expires">Session refreshes automatically. Current tokens expire at %1$s (server time).</string>
+    <string name="server_refresh">Refresh now</string>
+    <string name="server_reconnect">Reconnect</string>
+    <string name="server_jobs">Jobs on the server</string>
+    <string name="server_security">Security</string>
+    <string name="server_sec_tailnet">Connected over Tailscale: traffic is encrypted end to end by the tailnet.</string>
+    <string name="server_sec_lan">Connected over your local network. Traffic is plain HTTP, so use a network you trust.</string>
+    <string name="server_sec_name">Connected by host name. If this goes through a reverse proxy, make sure it uses HTTPS.</string>
+    <string name="server_sec_public">This is a public internet address. The FaceFusion API speaks plain HTTP: put it behind HTTPS or a tailnet.</string>
+    <string name="server_sec_key">Sessions need the API key.</string>
+    <string name="server_sec_no_key">No API key: anyone who can reach this port can use your GPU. Start the server with FACEFUSION_API_KEY set.</string>
+    <string name="server_forget">Forget this server</string>
 </resources>

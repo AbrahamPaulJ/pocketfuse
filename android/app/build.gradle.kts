@@ -27,6 +27,14 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.000"
+        // libwebrtc and MediaPipe ship native code per ABI; every phone this targets is arm64.
+        ndk { abiFilters += "arm64-v8a" }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    androidResources {
+        // MediaPipe memory-maps its .task model straight from the APK.
+        noCompress += "task"
     }
 
     signingConfigs {
@@ -100,4 +108,9 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
+    // End-to-end tests that run ON the phone against a real FaceFusion server (tools/e2e_phone.ps1)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
