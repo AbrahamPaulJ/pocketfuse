@@ -1,0 +1,99 @@
+{
+ "graphic_devices": [
+  {
+   "driver_version": "592.82",
+   "framework": {
+    "name": "CUDA",
+    "version": "13010"
+   },
+   "product": {
+    "vendor": "NVIDIA",
+    "name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+   },
+   "memory": {
+    "total": {
+     "value": 6,
+     "unit": "GB"
+    },
+    "used": {
+     "value": 0,
+     "unit": "GB"
+    }
+   },
+   "temperature": {
+    "gpu": {
+     "value": 51,
+     "unit": "C"
+    },
+    "memory": {
+     "value": 0,
+     "unit": "%"
+    }
+   },
+   "utilization": {
+    "gpu": {
+     "value": 0,
+     "unit": "%"
+    },
+    "memory": {
+     "value": 0,
+     "unit": "%"
+    }
+   }
+  }
+ ],
+ "disks": [
+  {
+   "total": {
+    "value": 475,
+    "unit": "GB"
+   },
+   "free": {
+    "value": 14,
+    "unit": "GB"
+   },
+   "utilization": {
+    "value": 96,
+    "unit": "%"
+   }
+  }
+ ],
+ "memory": {
+  "total": {
+   "value": 15,
+   "unit": "GB"
+  },
+  "free": {
+   "value": 5,
+   "unit": "GB"
+  },
+  "utilization": {
+   "value": 62,
+   "unit": "%"
+  }
+ },
+ "network": {
+  "up": {
+   "value": 31710,
+   "unit": "MB"
+  },
+  "down": {
+   "value": 39114,
+   "unit": "MB"
+  }
+ },
+ "processor": {
+  "cores": {
+   "value": 12,
+   "unit": "cores"
+  },
+  "frequency": {
+   "value": 2100,
+   "unit": "MHz"
+  },
+  "utilization": {
+   "value": 32,
+   "unit": "%"
+  }
+ }
+}

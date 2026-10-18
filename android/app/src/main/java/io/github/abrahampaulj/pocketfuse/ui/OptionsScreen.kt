@@ -1,5 +1,6 @@
 package io.github.abrahampaulj.pocketfuse.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -73,12 +75,23 @@ private fun ArgumentControl(argument: Argument, override: JsonElement?, onChange
     val current = override ?: argument.default
     val label = argument.key.removePrefix(argument.section + "_").replace('_', ' ')
     val changed = override != null
+    val choices = argument.choices
+    val isMenu = choices != null && !argument.isMulti && !(argument.isNumeric && choices.size > 6)
+    if (isMenu) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = if (changed) Violet else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            if (changed) TextButton(onClick = { onChange(null) }) { Text(stringResource(R.string.options_default)) }
+            ChoicePicker(label = null, choices = choices!!.map { it.asText() }, selected = current.asText()) { picked ->
+                onChange(choices.first { it.asText() == picked })
+            }
+        }
+        return
+    }
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.bodyMedium, color = if (changed) Violet else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
             if (changed) TextButton(onClick = { onChange(null) }) { Text(stringResource(R.string.options_default)) }
         }
-        val choices = argument.choices
         when {
             choices == null -> {
                 var text by remember(current) { mutableStateOf(current.asTextOrList()) }
@@ -92,9 +105,9 @@ private fun ArgumentControl(argument: Argument, override: JsonElement?, onChange
                     },
                 )
             }
-            argument.isMulti -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            argument.isMulti -> Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val selected = (current as? JsonArray)?.toSet().orEmpty()
-                choices.take(6).forEach { choice ->
+                choices.forEach { choice ->
                     FilterChip(
                         selected = choice in selected,
                         onClick = {
@@ -105,7 +118,7 @@ private fun ArgumentControl(argument: Argument, override: JsonElement?, onChange
                     )
                 }
             }
-            argument.isNumeric && choices.size > 6 -> {
+            else -> {
                 val index = choices.indexOf(current).coerceAtLeast(0)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Slider(
@@ -116,9 +129,6 @@ private fun ArgumentControl(argument: Argument, override: JsonElement?, onChange
                     )
                     Text(choices[index].asText(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 8.dp))
                 }
-            }
-            else -> ChoicePicker(label = "", choices = choices.map { it.asText() }, selected = current.asText()) { picked ->
-                onChange(choices.first { it.asText() == picked })
             }
         }
     }

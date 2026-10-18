@@ -29,14 +29,17 @@ class MetricsFeed(private val client: FaceFusionClient, private val historySize:
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                val metrics = runCatching { Metrics.parse(FaceFusionClient.json.parseToJsonElement(text).jsonObject) }.getOrNull() ?: return
-                _latest.value = metrics
-                _history.value = (_history.value + metrics).takeLast(historySize)
+                runCatching { Metrics.parse(FaceFusionClient.json.parseToJsonElement(text).jsonObject) }.getOrNull()?.let(::publish)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = disconnected()
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = disconnected()
         })
+    }
+
+    internal fun publish(metrics: Metrics) {
+        _latest.value = metrics
+        _history.value = (_history.value + metrics).takeLast(historySize)
     }
 
     private fun disconnected() {

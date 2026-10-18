@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from pocketfuse.types import Address, AddressKind, Host
 
@@ -21,11 +21,11 @@ def classify_address(host : Host) -> AddressKind:
 
 def detect_addresses() -> List[Address]:
 	addresses : List[Address] = []
-	hosts = set()
+	hosts : Set[Host] = set()
 
 	try:
 		for address_info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-			hosts.add(address_info[4][0])
+			hosts.add(str(address_info[4][0]))
 	except socket.gaierror:
 		pass
 

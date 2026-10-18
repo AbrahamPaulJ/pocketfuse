@@ -71,7 +71,10 @@ def wait_for_server(base_url : Url, process : subprocess.Popen[bytes], timeout :
 
 def stop_server(process : subprocess.Popen[bytes]) -> None:
 	if process.poll() is None:
-		process.terminate()
+		if sys.platform == 'win32':
+			subprocess.run([ 'taskkill', '/F', '/T', '/PID', str(process.pid) ], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+		else:
+			process.terminate()
 
 		try:
 			process.wait(timeout = 10)

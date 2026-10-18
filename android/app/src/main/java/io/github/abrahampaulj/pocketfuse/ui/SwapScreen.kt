@@ -210,10 +210,10 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
 }
 
 @Composable
-fun ChoicePicker(label: String, choices: List<String>, selected: String?, onSelect: (String) -> Unit) {
+fun ChoicePicker(label: String?, choices: List<String>, selected: String?, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        if (label != null) Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Box {
             OutlinedButton(onClick = { open = true }) { Text(selected ?: "-", maxLines = 1) }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

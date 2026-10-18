@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("io.github.takahirom.roborazzi")
 }
 
 // Release signing comes from a properties file OUTSIDE the repo, named by an environment variable
@@ -67,6 +68,8 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Roborazzi renders screens through Robolectric, which needs the real resources.
+        unitTests.isIncludeAndroidResources = true
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -108,6 +111,12 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    // Screens rendered to PNG on the JVM, no device: tools/build_android.ps1 recordRoborazziDebug
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.26.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.26.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // End-to-end tests that run ON the phone against a real FaceFusion server (tools/e2e_phone.ps1)
     androidTestImplementation("androidx.test:runner:1.6.2")

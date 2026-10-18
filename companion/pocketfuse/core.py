@@ -41,10 +41,18 @@ def resolve_host(api_host : Optional[Host]) -> Optional[Host]:
 	return host
 
 
+def resolve_light_cell() -> str:
+	try:
+		'█'.encode(sys.stdout.encoding or 'ascii')
+		return '██'
+	except (UnicodeEncodeError, LookupError):
+		return '##'
+
+
 def print_pairing(host : Host, port : Port, api_key : Optional[ApiKey], no_api_key : bool) -> None:
 	pairing_url = pairing.create_pairing_url(host, port, None if no_api_key else api_key)
 
-	print(pairing.render_pairing_code(pairing_url))
+	print(pairing.render_pairing_code(pairing_url, resolve_light_cell()))
 	print(translator.get('pairing_scan'))
 	print(pairing_url)
 
@@ -65,8 +73,14 @@ def serve(args : Namespace, server_args : List[str]) -> int:
 		print(translator.get('facefusion_not_found', path = facefusion_path))
 		return 1
 
-	api_key = pairing.create_api_key()
-	print(translator.get('api_key_generated'))
+	api_key = os.getenv('FACEFUSION_API_KEY')
+
+	if api_key:
+		print(translator.get('api_key_reused'))
+	else:
+		api_key = pairing.create_api_key()
+		print(translator.get('api_key_generated'))
+
 	print(translator.get('server_starting', host = host, port = args.api_port))
 	process = server_runner.start_server(facefusion_path, args.python_path, host, args.api_port, api_key, server_args)
 	base_url = server_runner.create_base_url(host, args.api_port)

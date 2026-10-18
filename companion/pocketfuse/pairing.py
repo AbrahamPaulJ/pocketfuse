@@ -47,11 +47,11 @@ def parse_pairing_url(pairing_url : Url) -> Optional[Pairing]:
 	return None
 
 
-def render_pairing_code(pairing_url : Url) -> str:
+def render_pairing_code(pairing_url : Url, light_cell : str = '██') -> str:
 	qr_code = segno.make_qr(pairing_url, error = 'm')
 	lines = []
 
 	for row in qr_code.matrix_iter(scale = 1, border = 2):
-		lines.append(''.join('  ' if cell else '██' for cell in row))
+		lines.append(''.join('  ' if cell else light_cell for cell in row))
 
 	return '\n'.join(lines)
