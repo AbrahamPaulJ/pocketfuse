@@ -36,7 +36,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import io.github.abrahampaulj.pocketfuse.PocketfuseApp
 import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.Connection
+import io.github.abrahampaulj.pocketfuse.core.FaceCheck
 import io.github.abrahampaulj.pocketfuse.core.FaceScope
 import io.github.abrahampaulj.pocketfuse.core.FrameResult
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
@@ -80,6 +83,12 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     var before by remember { mutableStateOf<ByteArray?>(null) }
     var previewing by remember { mutableStateOf(false) }
     var previewStatus by remember { mutableStateOf<String?>(null) }
+    val faceChecks = remember { mutableStateMapOf<String, FaceCheck>() }
+    LaunchedEffect(sources, connection) {
+        sources.filter { it.uri.toString() !in faceChecks }.forEach { source ->
+            faceChecks[source.uri.toString()] = connection.detectFace(source)
+        }
+    }
 
     val pickSource = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch { workspace.addSource(uri) }
@@ -116,7 +125,18 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(sources, key = { it.uri.toString() }) { source ->
                     Box {
-                        MediaThumb(source, Modifier.size(64.dp), circle = true)
+                        when (val check = faceChecks[source.uri.toString()]) {
+                            is FaceCheck.Found -> BytesImage(check.crop, Modifier.size(64.dp).clip(CircleShape), androidx.compose.ui.layout.ContentScale.Crop)
+                            else -> MediaThumb(source, Modifier.size(64.dp), circle = true)
+                        }
+                        if (faceChecks[source.uri.toString()] == FaceCheck.NoFace) {
+                            Text(
+                                stringResource(R.string.swap_no_face_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                modifier = Modifier.align(Alignment.BottomCenter).background(Bad, RoundedCornerShape(6.dp)).padding(horizontal = 4.dp),
+                            )
+                        }
                         Box(
                             Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { workspace.removeSource(source.uri) },
@@ -133,6 +153,7 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                 }
             }
             Hint(stringResource(if (sources.isEmpty()) R.string.swap_faces_empty else R.string.swap_faces_hint))
+            if (faceChecks.values.any { it == FaceCheck.NoFace }) Hint(stringResource(R.string.swap_no_face), color = Bad)
         }
 
         Section(stringResource(R.string.swap_target), trailing = {

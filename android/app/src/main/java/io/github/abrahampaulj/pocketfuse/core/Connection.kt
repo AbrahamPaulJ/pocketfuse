@@ -2,13 +2,16 @@ package io.github.abrahampaulj.pocketfuse.core
 
 import android.content.Context
 import android.net.Uri
+import io.github.abrahampaulj.pocketfuse.api.ApiException
 import io.github.abrahampaulj.pocketfuse.api.AssetType
 import io.github.abrahampaulj.pocketfuse.api.Capabilities
+import io.github.abrahampaulj.pocketfuse.api.CaptureSubject
 import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.api.FrameStream
 import io.github.abrahampaulj.pocketfuse.api.MetricsFeed
 import io.github.abrahampaulj.pocketfuse.api.SessionKeeper
 import io.github.abrahampaulj.pocketfuse.api.SessionState
+import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
 import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
@@ -19,6 +22,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
+
+sealed interface FaceCheck {
+    data object Unknown : FaceCheck
+    data object NoFace : FaceCheck
+    class Found(val crop: ByteArray) : FaceCheck
+}
 
 /**
  * Everything tied to one paired server: the session, the capability list, uploads already on the server,
@@ -79,6 +88,24 @@ class Connection(private val context: Context, val config: ServerConfig, scope: 
         if (changed.isEmpty()) return
         keeper.call { setState(changed) }
         appliedState = appliedState + changed
+    }
+
+    /**
+     * The face the PC finds in a source photo, as a JPEG crop, or [FaceCheck.NoFace]: a source without
+     * a detectable face makes every job fail, so the app checks before the user waits for one.
+     */
+    suspend fun detectFace(media: LocalMedia): FaceCheck = try {
+        if (ensureOpen() !is SessionState.Open) FaceCheck.Unknown
+        else {
+            val assetId = upload(AssetType.Source, media)
+            val capture = keeper.call { capture(assetId, CaptureSubject.Face, 96, 96) }
+            val crop = capture.parts.firstOrNull { it.isNotEmpty() }
+            if (crop == null) FaceCheck.NoFace else FaceCheck.Found(crop)
+        }
+    } catch (exception: ApiException) {
+        if (exception.status == 400) FaceCheck.NoFace else FaceCheck.Unknown
+    } catch (exception: UnreachableException) {
+        FaceCheck.Unknown
     }
 
     suspend fun close() {

@@ -7,7 +7,7 @@ camera and your attention already are. Nothing goes to a cloud: the phone talks 
 over your Wi-Fi or your tailnet.
 
 Built for the [FaceFusion v4 Challenge](https://github.com/facefusion/facefusion/tree/v4-challenge).
-Runs against the unmodified `v4-challenge` branch.
+Runs against the unmodified `v4-challenge` branch, and is tested against the `v4` branch as well.
 
 > Demo video: `demo.mp4` (coming). Every manipulated frame in the app and the demo carries a visible
 > **AI GENERATED** label.
@@ -22,7 +22,8 @@ The CLI is great at a desk. Most of the time you are not at the desk.
   tap Swap. Upload, job, progress and download run in a foreground service with notifications, so you
   can lock the phone and come back to the result.
 - **Live.** Your phone camera goes to the PC over WebRTC, every frame is swapped on the GPU and
-  streamed back. A phone you already carry becomes the camera.
+  streamed back. A phone you already carry becomes the camera. If WebRTC cannot deliver (UDP blocked,
+  or the `v4` branch issue below), Live carries on over the `/stream` WebSocket by itself.
 - **Lab.** Compare one setting side by side on a frame of your target: every swap model, pixel boost,
   weight or enhancer, one tile each, back in seconds. The CLI can try one setting per run. Tap the
   winner and it becomes the setting for your swaps.
@@ -41,7 +42,7 @@ API coverage
 | Sessions | open with the API key, rotate both tokens every 7 minutes, treat `401` and `426` as "session lost" and never retry the failed call, close on unpair |
 | State | every swap, preview, live stream, lab tile and puppet frame sets its options; only changed keys are sent |
 | Capabilities | the **All options** screen is built entirely from `GET /capabilities`: a slider for numeric ranges, chips for lists, a menu for choices, a text field for free input. A newer FaceFusion shows its new options with no app update |
-| Assets | multipart upload with progress, `capture` (faces in a source), `download` of outputs, uploads remembered per session |
+| Assets | multipart upload with progress, `capture` to show the face the PC found in each source photo (or warn that it found none, before a job fails on it), `download` of outputs, uploads remembered per session |
 | Jobs | create, add step, submit, run, poll, find the output asset named after the job; also used to download models before streaming (see below) |
 | Stream | WebRTC (`POST /stream`, `DELETE /stream`) for Live; the `/stream` WebSocket for preview, Lab and Puppet |
 | Metrics | the `/metrics` WebSocket feeds the PC dashboard |
@@ -112,6 +113,9 @@ Found while building, each written up for the FaceFusion team:
   one-image warm-up job, then remembers it.
 - **WebRTC without STUN.** The offer is sent only after ICE gathering completes, transceivers are added
   in the order the server expects, and VP8 is offered first (no AV1) so every phone decodes in hardware.
+- **The `v4` branch.** Its WebRTC peer stops before the track opens, so no frame is ever processed;
+  Live falls back to the WebSocket. Its `capture` needs a frame index even for photos and answers
+  `multipart/mixed`; Pocketfuse sends one and reads both formats.
 
 
 Tests
@@ -119,8 +123,8 @@ Tests
 
 | Suite | What | Run |
 |-------|------|-----|
-| Android JVM | 45 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
-| On the phone, against a real server | 9 tests over the real network path: sessions, wrong key, capture, stream preview, full swap job, metrics socket, token rotation, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
+| Android JVM | 48 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
+| On the phone, against a real server | 11 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 11/11 on `v4-challenge`; 10/11 on `v4` (the WebRTC issue above) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
 | Companion | flake8 and mypy with FaceFusion's own settings, 15 tests, plus a live probe test | `pytest` |
 
 CI runs the companion checks and the Android build and JVM tests on every push.

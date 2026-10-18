@@ -1,6 +1,7 @@
 package io.github.abrahampaulj.pocketfuse
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,6 +12,7 @@ import io.github.abrahampaulj.pocketfuse.api.CaptureSubject
 import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.core.Connection
+import io.github.abrahampaulj.pocketfuse.core.FaceCheck
 import io.github.abrahampaulj.pocketfuse.core.FrameResult
 import io.github.abrahampaulj.pocketfuse.core.ModelWarmup
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
@@ -121,6 +123,15 @@ class ServerE2ETest {
         val bitmap = BitmapFactory.decodeByteArray(first, 0, first.size)
         assertEquals(128, bitmap.height)
         assertTrue("no face found in source.jpg", bitmap.width >= 128)
+    }
+
+    @Test
+    fun faceCheckFindsTheFaceAndFlagsAPhotoWithout() = runBlocking {
+        connection.connect()
+        assertTrue(connection.detectFace(media("source.jpg")) is FaceCheck.Found)
+        val blank = File(context.cacheDir, "e2e/blank.jpg")
+        blank.outputStream().use { Bitmap.createBitmap(320, 240, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        assertEquals(FaceCheck.NoFace, connection.detectFace(MediaInspector.inspect(context, Uri.fromFile(blank))))
     }
 
     @Test

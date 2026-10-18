@@ -138,4 +138,6 @@
     <string name="live_transport_webrtc">WebRTC</string>
     <string name="live_transport_socket">WebSocket</string>
     <string name="live_fell_back">WebRTC connected but no swapped video came back, so Live switched to the WebSocket stream. It is slower but needs only the HTTP port.</string>
+    <string name="swap_no_face_badge">no face</string>
+    <string name="swap_no_face">Your PC found no face in a photo marked "no face". Use a clear, front-facing photo, or the swap will fail.</string>
 </resources>
