@@ -94,11 +94,22 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
     val state by session.state.collectAsState()
     val fps by session.receivedFps.collectAsState()
 
-    // Auto: WebRTC first; if it connects but no processed frame arrives, carry on over the WebSocket.
+    // Auto: WebRTC first; if it connects but no processed frame arrives, or the media path fails after
+    // signalling (seen on mobile data through Tailscale), carry on over the WebSocket.
+    var signalled by remember { mutableStateOf(false) }
     LaunchedEffect(state, transport) {
-        if (transport != Transport.Auto || state != RtcState.Connected) return@LaunchedEffect
-        delay(FALLBACK_AFTER_MS)
-        if (session.receivedFps.value == 0f && session.state.value == RtcState.Connected) {
+        if (transport != Transport.Auto) return@LaunchedEffect
+        val fallBack = when (state) {
+            RtcState.Connected -> {
+                signalled = true
+                delay(FALLBACK_AFTER_MS)
+                session.receivedFps.value == 0f && session.state.value == RtcState.Connected
+            }
+            is RtcState.Failed -> signalled
+            else -> false
+        }
+        if (fallBack) {
+            signalled = false
             session.stop()
             fellBack = true
             socketMode = true
@@ -115,6 +126,7 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
             setupError = failure?.message
             if (failure != null) return@launch
             fellBack = false
+            signalled = false
             if (transport == Transport.WebSocket) {
                 socketMode = true
                 socketLive.start(owner, front)
@@ -185,7 +197,7 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.live_start)) }
         }
-        (state as? RtcState.Failed)?.let { Hint(it.message, color = Bad) }
+        if (!fellBack) (state as? RtcState.Failed)?.let { Hint(it.message, color = Bad) }
         setupError?.let { Hint(it, color = Bad) }
         if (socketMode) socketError?.let { Hint(it, color = Bad) }
         if (fellBack) Hint(stringResource(R.string.live_fell_back), color = Warn)

@@ -13,8 +13,16 @@ $root = Join-Path $PSScriptRoot '..\android\app\build\outputs\apk'
 & (Join-Path $PSScriptRoot 'build_android.ps1') assembleDebug assembleDebugAndroidTest | Select-String 'GRADLE_EXIT'
 & $Adb -s $Serial install -r (Join-Path $root 'debug\app-debug.apk') | Out-Null
 & $Adb -s $Serial install -r -t (Join-Path $root 'androidTest\debug\app-debug-androidTest.apk') | Out-Null
+& $Adb -s $Serial logcat -c
 $sw = [Diagnostics.Stopwatch]::StartNew()
-& $Adb -s $Serial shell am instrument -w -r -e pairing "'$Pairing'" @filter io.github.abrahampaulj.pocketfuse.debug.test/androidx.test.runner.AndroidJUnitRunner |
+$lines = & $Adb -s $Serial shell am instrument -w -r -e pairing "'$Pairing'" @filter io.github.abrahampaulj.pocketfuse.debug.test/androidx.test.runner.AndroidJUnitRunner |
 	Select-String -Pattern 'INSTRUMENTATION_STATUS: test=|INSTRUMENTATION_STATUS_CODE: -2|FAILURES|OK \(|Tests run|AssertionError|Exception' |
 	ForEach-Object { $_.Line }
+$lines
+# A network adb link can drop the shell stream while the run carries on: read the runner's own log until it finishes.
+if (-not ($lines -match 'OK \(|FAILURES')) {
+	'adb stream ended early, reading the TestRunner log'
+	while (-not (& $Adb -s $Serial logcat -d -s TestRunner:I | Select-String 'run finished') -and $sw.Elapsed.TotalMinutes -lt 10) { Start-Sleep 5 }
+	& $Adb -s $Serial logcat -d -s TestRunner:I | Select-String 'failed:|run finished' | ForEach-Object { $_.Line }
+}
 "E2E_TIME=$([math]::Round($sw.Elapsed.TotalSeconds))s"
