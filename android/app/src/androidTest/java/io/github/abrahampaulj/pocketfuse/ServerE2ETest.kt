@@ -116,8 +116,9 @@ class ServerE2ETest {
         assertTrue(capabilities.accepts("mp4"))
 
         val sourceId = connection.upload(AssetType.Source, media("source.jpg"))
-        val strip = connection.keeper.call { capture(sourceId, CaptureSubject.Face, 128, 128) }
-        val bitmap = BitmapFactory.decodeByteArray(strip, 0, strip.size)
+        val capture = connection.keeper.call { capture(sourceId, CaptureSubject.Face, 128, 128) }
+        val first = capture.parts.first()
+        val bitmap = BitmapFactory.decodeByteArray(first, 0, first.size)
         assertEquals(128, bitmap.height)
         assertTrue("no face found in source.jpg", bitmap.width >= 128)
     }

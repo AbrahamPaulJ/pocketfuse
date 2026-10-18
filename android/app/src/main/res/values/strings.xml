@@ -133,4 +133,9 @@
     <string name="lab_need_inputs">Pick a face and a target on the Swap tab first.</string>
     <string name="lab_ms">%1$d ms</string>
     <string name="lab_tap_to_use">Tap a tile to use that setting for your swaps.</string>
+    <string name="live_fps_socket">%1$.1f fps (WebSocket)</string>
+    <string name="live_transport_auto">Auto</string>
+    <string name="live_transport_webrtc">WebRTC</string>
+    <string name="live_transport_socket">WebSocket</string>
+    <string name="live_fell_back">WebRTC connected but no swapped video came back, so Live switched to the WebSocket stream. It is slower but needs only the HTTP port.</string>
 </resources>

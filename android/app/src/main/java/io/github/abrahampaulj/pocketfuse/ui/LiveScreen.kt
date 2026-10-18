@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -44,7 +46,9 @@ import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
 import io.github.abrahampaulj.pocketfuse.live.RtcSession
 import io.github.abrahampaulj.pocketfuse.live.RtcState
+import io.github.abrahampaulj.pocketfuse.live.SocketLive
 import io.github.abrahampaulj.pocketfuse.live.VideoInput
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.webrtc.RendererCommon
 import org.webrtc.SurfaceViewRenderer
@@ -62,6 +66,14 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
     var front by remember { mutableStateOf(true) }
     var microphone by remember { mutableStateOf(false) }
     var setupError by remember { mutableStateOf<String?>(null) }
+    var transport by remember { mutableStateOf(Transport.Auto) }
+    var socketMode by remember { mutableStateOf(false) }
+    var fellBack by remember { mutableStateOf(false) }
+    val owner = LocalLifecycleOwner.current
+    val socketLive = remember(connection) { SocketLive(context.applicationContext, connection.frames) }
+    val socketFrame by socketLive.output.collectAsState()
+    val socketFps by socketLive.fps.collectAsState()
+    val socketError by socketLive.error.collectAsState()
 
     val session = remember(connection) {
         RtcSession(
@@ -72,6 +84,7 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
     }
     DisposableEffect(session) {
         onDispose {
+            socketLive.release()
             app.scope.launch {
                 session.stop()
                 session.release()
@@ -81,6 +94,18 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
     val state by session.state.collectAsState()
     val fps by session.receivedFps.collectAsState()
 
+    // Auto: WebRTC first; if it connects but no processed frame arrives, carry on over the WebSocket.
+    LaunchedEffect(state, transport) {
+        if (transport != Transport.Auto || state != RtcState.Connected) return@LaunchedEffect
+        delay(FALLBACK_AFTER_MS)
+        if (session.receivedFps.value == 0f && session.state.value == RtcState.Connected) {
+            session.stop()
+            fellBack = true
+            socketMode = true
+            socketLive.start(owner, front)
+        }
+    }
+
     fun start() {
         scope.launch {
             setupError = null
@@ -88,7 +113,14 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
             val stream = StreamPreview(context, connection) { setupError = it }
             val failure = stream.prepare(sources) ?: stream.apply(options.toState(forStream = true))
             setupError = failure?.message
-            if (failure == null) session.start(VideoInput.Camera(front), microphone)
+            if (failure != null) return@launch
+            fellBack = false
+            if (transport == Transport.WebSocket) {
+                socketMode = true
+                socketLive.start(owner, front)
+            } else {
+                session.start(VideoInput.Camera(front), microphone)
+            }
         }
     }
 
@@ -97,8 +129,17 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        val live = socketMode || state == RtcState.Connected || state == RtcState.Connecting
         Box(Modifier.fillMaxWidth().aspectRatio(9f / 16f).clip(RoundedCornerShape(18.dp)).background(Color.Black)) {
-            if (state == RtcState.Connected || state == RtcState.Connecting) {
+            if (socketMode) {
+                BitmapImage(socketFrame, Modifier.fillMaxSize(), androidx.compose.ui.layout.ContentScale.Crop)
+                AiLabel(Modifier.align(Alignment.TopStart).padding(12.dp))
+                Text(
+                    stringResource(R.string.live_fps_socket, socketFps),
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).background(Color(0x88000000), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            } else if (state == RtcState.Connected || state == RtcState.Connecting) {
                 Renderer(session, local = false, mirror = false, Modifier.fillMaxSize())
                 Renderer(session, local = true, mirror = front, Modifier.align(Alignment.BottomEnd).padding(12.dp).width(96.dp).aspectRatio(9f / 16f).clip(RoundedCornerShape(12.dp)))
                 AiLabel(Modifier.align(Alignment.TopStart).padding(12.dp))
@@ -117,11 +158,20 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
                 front = !front
                 if (state == RtcState.Connected) session.switchCamera()
             }, label = { Text(stringResource(R.string.live_front)) })
-            FilterChip(selected = microphone, enabled = state == RtcState.Idle || state is RtcState.Failed, onClick = { microphone = !microphone }, label = { Text(stringResource(R.string.live_microphone)) })
+            FilterChip(selected = microphone, enabled = !live, onClick = { microphone = !microphone }, label = { Text(stringResource(R.string.live_microphone)) })
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Transport.entries.forEach { entry ->
+                FilterChip(selected = transport == entry, enabled = !live, onClick = { transport = entry }, label = { Text(stringResource(entry.label)) })
+            }
         }
 
-        if (state == RtcState.Connected || state == RtcState.Connecting) {
-            OutlinedButton(onClick = { scope.launch { session.stop() } }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.live_stop)) }
+        if (live) {
+            OutlinedButton(onClick = {
+                socketLive.stop()
+                socketMode = false
+                scope.launch { session.stop() }
+            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.live_stop)) }
         } else {
             Button(
                 onClick = {
@@ -137,9 +187,19 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
         }
         (state as? RtcState.Failed)?.let { Hint(it.message, color = Bad) }
         setupError?.let { Hint(it, color = Bad) }
+        if (socketMode) socketError?.let { Hint(it, color = Bad) }
+        if (fellBack) Hint(stringResource(R.string.live_fell_back), color = Warn)
         Hint(stringResource(R.string.live_note))
     }
 }
+
+enum class Transport(val label: Int) {
+    Auto(R.string.live_transport_auto),
+    WebRtc(R.string.live_transport_webrtc),
+    WebSocket(R.string.live_transport_socket),
+}
+
+private const val FALLBACK_AFTER_MS = 10_000L
 
 @Composable
 private fun Renderer(session: RtcSession, local: Boolean, mirror: Boolean, modifier: Modifier) {

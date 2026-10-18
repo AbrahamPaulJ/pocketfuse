@@ -145,15 +145,20 @@ class FaceFusionClient(
         execute(request("/assets/$assetId").delete().build(), Operation.Assets).close()
     }
 
-    /** JPEG strip, one tile per frame or per detected face, laid out left to right. */
-    suspend fun capture(assetId: String, subject: CaptureSubject, width: Int, height: Int, frameIndexes: List<Int> = emptyList()): ByteArray {
+    /**
+     * Frames or detected faces of an asset as JPEG tiles. A frame index is always sent: the `v4` branch
+     * requires one even for an image, and `v4-challenge` accepts it.
+     */
+    suspend fun capture(assetId: String, subject: CaptureSubject, width: Int, height: Int, frameIndexes: List<Int> = listOf(0)): Capture {
         val url = url("/assets/$assetId") {
             addQueryParameter("action", "capture")
             addQueryParameter("subject", subject.wire)
             addQueryParameter("resolution", "${width}x$height")
             frameIndexes.forEach { addQueryParameter("frame_index", it.toString()) }
         }
-        return execute(Request.Builder().url(url).get().build(), Operation.Capture, longRunning = true).use { it.body!!.bytes() }
+        return execute(Request.Builder().url(url).get().build(), Operation.Capture, longRunning = true).use {
+            Capture.from(it.body!!.bytes(), it.header("Content-Type"))
+        }
     }
 
     suspend fun download(assetId: String, into: File, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
