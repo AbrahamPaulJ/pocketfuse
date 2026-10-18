@@ -79,6 +79,7 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     var preview by remember { mutableStateOf<FrameResult?>(null) }
     var before by remember { mutableStateOf<ByteArray?>(null) }
     var previewing by remember { mutableStateOf(false) }
+    var previewStatus by remember { mutableStateOf<String?>(null) }
 
     val pickSource = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(workspace::addSource) }
     val pickTarget = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -97,9 +98,10 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
         scope.launch {
             val frame = MediaInspector.frameJpeg(context, media, previewAtMs.toLong(), 720)
             before = frame
-            val stream = StreamPreview(connection)
+            val stream = StreamPreview(context, connection) { previewStatus = it }
             preview = if (frame == null) FrameResult.Failed(context.getString(R.string.swap_no_frame))
             else stream.prepare(sources) ?: stream.process(frame, options.toState(forStream = true))
+            previewStatus = null
             previewing = false
         }
     }
@@ -160,6 +162,7 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                         null -> Unit
                     }
                 }
+                previewStatus?.let { Hint(it) }
             }
         }
 

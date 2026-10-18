@@ -53,8 +53,9 @@ class LiveE2ETest {
         val connection = Connection(context, Pairing.parse(pairing!!)!!, scope)
         connection.connect()
         val source = MediaInspector.inspect(context, Uri.fromFile(example("source.jpg")))
-        assertEquals(null, StreamPreview(connection).prepare(listOf(source)))
-        connection.applyState(SwapOptions().toState(forStream = true))
+        val stream = StreamPreview(context, connection)
+        assertEquals(null, stream.prepare(listOf(source)))
+        assertEquals(null, stream.apply(SwapOptions().toState(forStream = true)))
 
         val target = MediaInspector.inspect(context, Uri.fromFile(example("target-240p.mp4")))
         val frame = MediaInspector.frameJpeg(context, target, 2000, 640)!!

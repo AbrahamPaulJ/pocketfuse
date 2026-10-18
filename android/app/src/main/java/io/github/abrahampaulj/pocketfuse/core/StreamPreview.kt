@@ -1,5 +1,6 @@
 package io.github.abrahampaulj.pocketfuse.core
 
+import android.content.Context
 import io.github.abrahampaulj.pocketfuse.api.ApiException
 import io.github.abrahampaulj.pocketfuse.api.AssetType
 import io.github.abrahampaulj.pocketfuse.api.SessionState
@@ -17,29 +18,38 @@ sealed interface FrameResult {
 /**
  * Runs single frames through the server with the `/stream` WebSocket instead of a job: nothing is
  * written on the server and a frame comes back in a fraction of a second. Used by the swap preview,
- * the settings lab and the puppet.
+ * the live stream setup, the settings lab and the puppet.
  */
-class StreamPreview(private val connection: Connection) {
+class StreamPreview(context: Context, private val connection: Connection, private val onStatus: (String) -> Unit = {}) {
+    private val warmup = ModelWarmup(context, connection)
+    private var sourceIds: List<String> = emptyList()
 
-    /** Uploads (once) and selects the source faces, the one thing the stream reads from the session. */
-    suspend fun prepare(sources: List<LocalMedia>): FrameResult? = guarded {
+    /** Uploads (once) and selects the source faces, the one input the stream reads from the session. */
+    suspend fun prepare(sources: List<LocalMedia>): FrameResult.Failed? = guarded {
         val session = connection.ensureOpen()
         if (session !is SessionState.Open) return@guarded FrameResult.Failed((session as? SessionState.Failed)?.message ?: "Not connected.")
         if (sources.isNotEmpty()) {
-            val ids = sources.map { connection.upload(AssetType.Source, it) }
-            connection.keeper.call { selectSources(ids) }
+            sourceIds = sources.map { connection.upload(AssetType.Source, it) }
+            connection.keeper.call { selectSources(sourceIds) }
         }
         null
-    }
+    } as FrameResult.Failed?
+
+    /** Makes the models in [state] available on the PC and applies [state]. Needed before any streaming. */
+    suspend fun apply(state: Map<String, JsonElement>): FrameResult.Failed? = guarded {
+        warmup.ensure(state, sourceIds, onStatus)?.let { return@guarded FrameResult.Failed(it) }
+        connection.applyState(state)
+        null
+    } as FrameResult.Failed?
 
     suspend fun process(frame: ByteArray, state: Map<String, JsonElement>): FrameResult = guarded {
-        connection.applyState(state)
+        apply(state)?.let { return@guarded it }
         val started = System.currentTimeMillis()
         val output = connection.frames.process(frame)
         FrameResult.Ready(output, System.currentTimeMillis() - started)
     } ?: FrameResult.Failed("No answer from the server.")
 
-    private suspend fun <T : FrameResult?> guarded(block: suspend () -> T): FrameResult? = try {
+    private suspend fun guarded(block: suspend () -> FrameResult?): FrameResult? = try {
         block()
     } catch (exception: ApiException) {
         FrameResult.Failed(exception.userMessage)

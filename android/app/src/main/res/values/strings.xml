@@ -112,4 +112,25 @@
     <string name="live_stop">Stop</string>
     <string name="live_camera_denied">Camera permission is needed for the live stream.</string>
     <string name="live_note">The live stream needs the phone to reach the PC directly: same Wi-Fi or the same tailnet. Frames the content check flags come back blurred.</string>
+    <string name="puppet_pick">Tap to pick a portrait to bring to life</string>
+    <string name="puppet_fps">%1$.1f fps</string>
+    <string name="puppet_no_face">Looking for your face</string>
+    <string name="puppet_calibrate">Set neutral</string>
+    <string name="puppet_start">Start puppet</string>
+    <string name="puppet_change">Change portrait</string>
+    <string name="puppet_mirror">Mirror left and right</string>
+    <string name="puppet_intensity">Intensity %1$.2f</string>
+    <string name="puppet_note">Your head pose and expression are read on this phone. Only 14 numbers and the portrait go to your PC, which redraws the portrait with face_editor. Use your own photo or one you have permission to use.</string>
+
+    <string name="lab_intro">Compare one setting side by side on a frame of your target. Each tile is one pass through your PC.</string>
+    <string name="lab_axis_model">Swap model</string>
+    <string name="lab_axis_boost">Pixel boost</string>
+    <string name="lab_axis_weight">Swap weight</string>
+    <string name="lab_axis_enhancer">Enhancer</string>
+    <string name="lab_axis_blend">Enhancer blend</string>
+    <string name="lab_run">Compare</string>
+    <string name="lab_running">Comparing on your PC</string>
+    <string name="lab_need_inputs">Pick a face and a target on the Swap tab first.</string>
+    <string name="lab_ms">%1$d ms</string>
+    <string name="lab_tap_to_use">Tap a tile to use that setting for your swaps.</string>
 </resources>

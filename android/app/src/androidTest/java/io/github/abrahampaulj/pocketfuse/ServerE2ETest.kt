@@ -12,6 +12,7 @@ import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.core.FrameResult
+import io.github.abrahampaulj.pocketfuse.core.ModelWarmup
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
 import io.github.abrahampaulj.pocketfuse.core.SwapOptions
 import io.github.abrahampaulj.pocketfuse.core.SwapProgress
@@ -19,6 +20,9 @@ import io.github.abrahampaulj.pocketfuse.core.SwapRunner
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
 import io.github.abrahampaulj.pocketfuse.pair.Pairing
 import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
+import io.github.abrahampaulj.pocketfuse.puppet.EditorPose
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -110,7 +114,7 @@ class ServerE2ETest {
     fun streamPreviewSwapsAFrame() = runBlocking {
         connection.connect()
         val frame = MediaInspector.frameJpeg(context, media("target-240p.mp4"), 2000, 480)!!
-        val preview = StreamPreview(connection)
+        val preview = StreamPreview(context, connection)
         assertEquals(null, preview.prepare(listOf(media("source.jpg"))))
         val result = withTimeout(120_000) { preview.process(frame, SwapOptions().toState(forStream = true)) }
         assertTrue("stream failed: $result", result is FrameResult.Ready)
@@ -135,6 +139,26 @@ class ServerE2ETest {
         }
         assertTrue("swap failed: $result", result is SwapProgress.Done)
         assertTrue((result as SwapProgress.Done).output.length() > 0)
+    }
+
+    @Test
+    fun serverAcceptsEverySnappedPuppetValue() = runBlocking {
+        connection.connect()
+        val odd = EditorPose(0.333, -0.871, 0.0249, 0.9751, -0.45, 0.07, -0.024, 1.3, 0.15000000000000002, -0.0, 0.5, -1.7, 0.66, -0.12)
+        connection.applyState(mapOf("processors" to JsonArray(listOf(JsonPrimitive("face_editor")))) + odd.toStateBody())
+        val state = connection.keeper.call { state() }
+        assertEquals("0.35", state["face_editor_eyebrow_direction"].toString())
+        assertEquals("1.0", state["face_editor_mouth_purse"].toString())
+    }
+
+    @Test
+    fun warmupPreparesModelsOnceThenRemembers() = runBlocking {
+        connection.connect()
+        val sourceId = connection.upload(AssetType.Source, media("source.jpg"))
+        val warmup = ModelWarmup(context, connection)
+        val state = SwapOptions(enhance = true).toState(forStream = true)
+        assertEquals(null, withTimeout(600_000) { warmup.ensure(state, listOf(sourceId)) })
+        assertTrue(warmup.isWarm(warmup.modelKey(state, connection.capabilities.value)))
     }
 
     @Test

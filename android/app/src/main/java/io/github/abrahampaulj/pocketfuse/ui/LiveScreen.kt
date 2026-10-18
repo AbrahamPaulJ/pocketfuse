@@ -41,7 +41,6 @@ import androidx.core.content.ContextCompat
 import io.github.abrahampaulj.pocketfuse.PocketfuseApp
 import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.Connection
-import io.github.abrahampaulj.pocketfuse.core.FrameResult
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
 import io.github.abrahampaulj.pocketfuse.live.RtcSession
 import io.github.abrahampaulj.pocketfuse.live.RtcState
@@ -86,13 +85,10 @@ fun LiveScreen(app: PocketfuseApp, connection: Connection) {
         scope.launch {
             setupError = null
             // The stream reads the selected sources and the processors from the session state.
-            val prepared = StreamPreview(connection).prepare(sources)
-            if (prepared is FrameResult.Failed) {
-                setupError = prepared.message
-                return@launch
-            }
-            runCatching { connection.applyState(options.toState(forStream = true)) }.onFailure { setupError = it.message }
-            if (setupError == null) session.start(VideoInput.Camera(front), microphone)
+            val stream = StreamPreview(context, connection) { setupError = it }
+            val failure = stream.prepare(sources) ?: stream.apply(options.toState(forStream = true))
+            setupError = failure?.message
+            if (failure == null) session.start(VideoInput.Camera(front), microphone)
         }
     }
 

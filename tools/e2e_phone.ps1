@@ -5,14 +5,16 @@ param(
 	[Parameter(Mandatory = $true)] [string] $Serial,
 	[Parameter(Mandatory = $true)] [string] $Pairing,
 	[string] $Adb = 'adb',
-	[string] $Class = 'io.github.abrahampaulj.pocketfuse.ServerE2ETest'
+	[string] $Class = ''
 )
+# Empty runs every e2e class; a name ending in Test runs that class, anything else is a package.
+$filter = if (-not $Class) { @() } elseif ($Class -match 'Test(#\w+)?$') { @('-e', 'class', $Class) } else { @('-e', 'package', $Class) }
 $root = Join-Path $PSScriptRoot '..\android\app\build\outputs\apk'
 & (Join-Path $PSScriptRoot 'build_android.ps1') assembleDebug assembleDebugAndroidTest | Select-String 'GRADLE_EXIT'
 & $Adb -s $Serial install -r (Join-Path $root 'debug\app-debug.apk') | Out-Null
 & $Adb -s $Serial install -r -t (Join-Path $root 'androidTest\debug\app-debug-androidTest.apk') | Out-Null
 $sw = [Diagnostics.Stopwatch]::StartNew()
-& $Adb -s $Serial shell am instrument -w -r -e pairing "'$Pairing'" -e class $Class io.github.abrahampaulj.pocketfuse.test/androidx.test.runner.AndroidJUnitRunner |
+& $Adb -s $Serial shell am instrument -w -r -e pairing "'$Pairing'" @filter io.github.abrahampaulj.pocketfuse.test/androidx.test.runner.AndroidJUnitRunner |
 	Select-String -Pattern 'INSTRUMENTATION_STATUS: test=|INSTRUMENTATION_STATUS_CODE: -2|FAILURES|OK \(|Tests run|AssertionError|Exception' |
 	ForEach-Object { $_.Line }
 "E2E_TIME=$([math]::Round($sw.Elapsed.TotalSeconds))s"
