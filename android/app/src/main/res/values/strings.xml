@@ -26,6 +26,9 @@
     <string name="paired_with">Paired with %1$s</string>
 
     <string name="pair_intro">Pocketfuse runs FaceFusion on your own PC and puts it in your pocket. Nothing goes to a cloud: the phone talks only to your computer, over your Wi-Fi or tailnet.</string>
+    <string name="pair_saved_title">Cannot reach your PC (%1$s)</string>
+    <string name="pair_saved_hint">Pocketfuse tries again each time you come back to the app.</string>
+    <string name="pair_retry">Try again</string>
     <string name="pair_step_server">1. Start FaceFusion on your PC</string>
     <string name="pair_run_companion">In the Pocketfuse companion folder, run:</string>
     <string name="pair_companion_explains">It starts the FaceFusion API on your LAN or Tailscale address with a fresh API key and prints a pairing code.</string>

@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,12 +54,26 @@ import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
 import java.util.concurrent.Executors
 
 @Composable
-fun PairScreen(failure: String?, onPaired: (ServerConfig) -> Unit) {
+fun PairScreen(failure: String?, onPaired: (ServerConfig) -> Unit, saved: ServerConfig? = null, onRetry: () -> Unit = {}) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var scanning by remember { mutableStateOf(false) }
     var address by remember { mutableStateOf("") }
     var apiKey by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(failure) }
+    // A saved PC that was unreachable once (asleep, Tailscale off, or the app started in the background,
+    // where Android cuts its sockets) is tried again whenever the app comes to the front, so the user is
+    // not asked to pair again.
+    DisposableEffect(lifecycleOwner, saved) {
+        // Adding the observer to a screen already in front replays ON_RESUME: that one is not a return.
+        var replayed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME || saved == null) return@LifecycleEventObserver
+            if (replayed) replayed = false else onRetry()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         scanning = granted
         if (!granted) error = context.getString(R.string.pair_camera_denied)
@@ -70,6 +86,14 @@ fun PairScreen(failure: String?, onPaired: (ServerConfig) -> Unit) {
         Gap(24.dp)
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
         Hint(stringResource(R.string.pair_intro))
+
+        if (saved != null) {
+            Section(stringResource(R.string.pair_saved_title, saved.label)) {
+                failure?.let { Hint(it, color = Bad) }
+                Hint(stringResource(R.string.pair_saved_hint))
+                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pair_retry)) }
+            }
+        }
 
         Section(stringResource(R.string.pair_step_server)) {
             Hint(stringResource(R.string.pair_run_companion))
@@ -134,7 +158,7 @@ fun PairScreen(failure: String?, onPaired: (ServerConfig) -> Unit) {
             ) { Text(stringResource(R.string.pair_connect)) }
         }
 
-        error?.let { Hint(it, color = Bad) }
+        if (saved == null || error != failure) error?.let { Hint(it, color = Bad) }
         Hint(stringResource(R.string.pair_security_note))
     }
 }

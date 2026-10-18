@@ -49,7 +49,12 @@ fun AppRoot(app: PocketfuseApp, initialTab: Tab = Tab.Swap) {
     }
     val session by current.session.collectAsState()
     if (session is SessionState.Failed && current.capabilities.value == null) {
-        PairScreen(failure = (session as SessionState.Failed).message, onPaired = { app.pair(it) })
+        PairScreen(
+            failure = (session as SessionState.Failed).message,
+            onPaired = { app.pair(it) },
+            saved = current.config,
+            onRetry = { app.pair(current.config, remember = false) },
+        )
         return
     }
     Connected(app, current, session, initialTab)

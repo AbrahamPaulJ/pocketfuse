@@ -9,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.api.Metrics
+import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
 import io.github.abrahampaulj.pocketfuse.ui.LabScreen
@@ -46,6 +47,12 @@ class ScreensTest {
 
     @Test
     fun pair() = shoot("pair") { PairScreen(failure = null, onPaired = {}) }
+
+    @Test
+    fun pairSavedPcUnreachable() = shoot("pair_unreachable") {
+        val saved = ServerConfig("100.64.0.2", 8000, "key")
+        PairScreen(failure = UnreachableException(saved.label, Exception()).userMessage, onPaired = {}, saved = saved)
+    }
 
     @Test
     fun swap() = shoot("swap") { SwapScreen(app, connection, onOpenOptions = {}, onOpenResults = {}) }
