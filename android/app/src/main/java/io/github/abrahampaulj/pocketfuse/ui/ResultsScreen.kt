@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +36,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.JobCenter
 import io.github.abrahampaulj.pocketfuse.media.Gallery
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
@@ -43,6 +47,7 @@ import java.util.Date
 fun ResultsScreen(jobs: JobCenter) {
     val results by jobs.results.collectAsState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     if (results.isEmpty()) {
         Hint(stringResource(R.string.results_empty), Modifier.padding(16.dp))
         return
@@ -57,8 +62,10 @@ fun ResultsScreen(jobs: JobCenter) {
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(onClick = {
-                        val saved = Gallery.save(context, file)
-                        Toast.makeText(context, if (saved != null) R.string.results_saved else R.string.results_save_failed, Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) { runCatching { Gallery.save(context, file) }.getOrNull() }
+                            Toast.makeText(context, if (saved != null) R.string.results_saved else R.string.results_save_failed, Toast.LENGTH_SHORT).show()
+                        }
                     }) { Text(stringResource(R.string.results_save)) }
                     OutlinedButton(onClick = { context.startActivity(Gallery.shareIntent(context, file)) }) { Text(stringResource(R.string.results_share)) }
                     TextButton(onClick = { jobs.delete(file) }) { Text(stringResource(R.string.results_delete)) }

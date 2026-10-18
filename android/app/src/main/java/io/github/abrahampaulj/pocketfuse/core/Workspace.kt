@@ -5,9 +5,11 @@ import android.content.Intent
 import android.net.Uri
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -31,11 +33,14 @@ class Workspace(private val context: Context) {
     )
     val options: StateFlow<SwapOptions> = _options.asStateFlow()
 
-    init {
-        prefs.getStringSet("sources", emptySet())!!.mapNotNull { restore(it) }.let { _sources.value = it }
+    /** Called once at start, off the main thread: inspecting a picked file can mean a cloud round trip. */
+    suspend fun restore() = withContext(Dispatchers.IO) {
+        _sources.value = prefs.getStringSet("sources", emptySet())!!.mapNotNull { value ->
+            runCatching { MediaInspector.inspect(context, Uri.parse(value)) }.getOrNull()
+        }
     }
 
-    fun addSource(uri: Uri) {
+    suspend fun addSource(uri: Uri) {
         val media = inspect(uri) ?: return
         if (_sources.value.none { it.uri == uri }) _sources.value = (_sources.value + media).takeLast(MAX_SOURCES)
         prefs.edit().putStringSet("sources", _sources.value.map { it.uri.toString() }.toSet()).apply()
@@ -46,7 +51,7 @@ class Workspace(private val context: Context) {
         prefs.edit().putStringSet("sources", _sources.value.map { it.uri.toString() }.toSet()).apply()
     }
 
-    fun setTarget(uri: Uri): LocalMedia? = inspect(uri)?.also { _target.value = it }
+    suspend fun setTarget(uri: Uri): LocalMedia? = inspect(uri)?.also { _target.value = it }
 
     fun clearTarget() {
         _target.value = null
@@ -57,12 +62,10 @@ class Workspace(private val context: Context) {
         prefs.edit().putString("options", json.encodeToString(_options.value)).apply()
     }
 
-    private fun inspect(uri: Uri): LocalMedia? {
+    private suspend fun inspect(uri: Uri): LocalMedia? = withContext(Dispatchers.IO) {
         runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-        return runCatching { MediaInspector.inspect(context, uri) }.getOrNull()
+        runCatching { MediaInspector.inspect(context, uri) }.getOrNull()
     }
-
-    private fun restore(value: String): LocalMedia? = runCatching { MediaInspector.inspect(context, Uri.parse(value)) }.getOrNull()
 
     private companion object {
         const val MAX_SOURCES = 8

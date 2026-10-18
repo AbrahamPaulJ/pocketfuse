@@ -81,10 +81,12 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     var previewing by remember { mutableStateOf(false) }
     var previewStatus by remember { mutableStateOf<String?>(null) }
 
-    val pickSource = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(workspace::addSource) }
+    val pickSource = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch { workspace.addSource(uri) }
+    }
     val pickTarget = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let {
-            val media = workspace.setTarget(it)
+        if (uri != null) scope.launch {
+            val media = workspace.setTarget(uri)
             preview = null
             before = null
             previewAtMs = 0f

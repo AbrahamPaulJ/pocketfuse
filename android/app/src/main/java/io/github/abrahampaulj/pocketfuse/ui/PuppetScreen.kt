@@ -56,7 +56,9 @@ import io.github.abrahampaulj.pocketfuse.media.MediaInspector
 import io.github.abrahampaulj.pocketfuse.media.toJpeg
 import io.github.abrahampaulj.pocketfuse.puppet.EditorPose
 import io.github.abrahampaulj.pocketfuse.puppet.FaceTracker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
@@ -93,7 +95,7 @@ fun PuppetScreen(app: PocketfuseApp, connection: Connection) {
     }
 
     LaunchedEffect(portrait) {
-        portraitJpeg = portrait?.let { uri -> MediaInspector.decodeScaled(context, uri, 512)?.toJpeg() }
+        portraitJpeg = portrait?.let { uri -> withContext(Dispatchers.IO) { MediaInspector.decodeScaled(context, uri, 512)?.toJpeg() } }
     }
 
     DisposableEffect(running) {
@@ -110,7 +112,7 @@ fun PuppetScreen(app: PocketfuseApp, connection: Connection) {
             "face_selector_mode" to JsonPrimitive("one"),
         )
         // The editor needs no source face, but warming its models needs an image with a face: the portrait.
-        val portraitMedia = portrait?.let { MediaInspector.inspect(context, it) }
+        val portraitMedia = portrait?.let { withContext(Dispatchers.IO) { MediaInspector.inspect(context, it) } }
         val failure = stream.prepare(listOfNotNull(portraitMedia)) ?: stream.apply(base + EditorPose().toStateBody())
         if (failure != null) {
             status = failure.message

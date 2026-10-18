@@ -36,6 +36,7 @@ class PocketfuseApp : Application() {
         workspace = Workspace(this)
         jobs = JobCenter(this)
         createChannels()
+        scope.launch { workspace.restore() }
         serverStore.load()?.let { pair(it, remember = false) }
     }
 

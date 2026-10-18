@@ -10,9 +10,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.IntentCompat
+import androidx.lifecycle.lifecycleScope
 import io.github.abrahampaulj.pocketfuse.pair.Pairing
 import io.github.abrahampaulj.pocketfuse.ui.AppRoot
 import io.github.abrahampaulj.pocketfuse.ui.PocketfuseTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val app get() = application as PocketfuseApp
@@ -36,7 +38,9 @@ class MainActivity : ComponentActivity() {
     private fun handle(intent: Intent?) {
         when (intent?.action) {
             Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.let { uri ->
-                if (app.workspace.setTarget(uri) != null) Toast.makeText(this, R.string.shared_target, Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    if (app.workspace.setTarget(uri) != null) Toast.makeText(this@MainActivity, R.string.shared_target, Toast.LENGTH_SHORT).show()
+                }
             }
             Intent.ACTION_VIEW -> intent.data?.let { Pairing.parse(it.toString()) }?.let { config ->
                 app.pair(config)
