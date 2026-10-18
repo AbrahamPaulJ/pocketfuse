@@ -27,6 +27,8 @@ The CLI is great at a desk. Most of the time you are not at the desk.
 - **Lab.** Compare one setting side by side on a frame of your target: every swap model, pixel boost,
   weight or enhancer, one tile each, back in seconds. The CLI can try one setting per run. Tap the
   winner and it becomes the setting for your swaps.
+- **Dub.** Record a line on the phone and the target speaks it, with FaceFusion's `lip_syncer`: the
+  phone's microphone becomes a source. Works with a face swap or on its own.
 - **Puppet.** The front camera reads your head pose and expression on the phone (MediaPipe) and those
   14 numbers drive FaceFusion's `face_editor` on a portrait, frame after frame. Your camera image never
   leaves the phone; only the numbers and the portrait do.
@@ -124,7 +126,7 @@ Tests
 | Suite | What | Run |
 |-------|------|-----|
 | Android JVM | 48 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
-| On the phone, against a real server | 11 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 11/11 on `v4-challenge`; 10/11 on `v4` (the WebRTC issue above) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
+| On the phone, against a real server | 12 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, lip sync to a voice, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 12/12 on `v4-challenge`; 11/12 on `v4` (the WebRTC issue above) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
 | Companion | flake8 and mypy with FaceFusion's own settings, 15 tests, plus a live probe test | `pytest` |
 
 CI runs the companion checks and the Android build and JVM tests on every push.

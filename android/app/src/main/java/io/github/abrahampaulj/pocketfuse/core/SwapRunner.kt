@@ -7,8 +7,6 @@ import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import kotlinx.coroutines.delay
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
 
 sealed interface SwapProgress {
@@ -28,9 +26,9 @@ sealed interface SwapProgress {
  */
 class SwapRunner(private val connection: Connection, private val outputDirectory: File) {
 
-    suspend fun run(sources: List<LocalMedia>, target: LocalMedia, options: SwapOptions, onProgress: (SwapProgress) -> Unit): SwapProgress {
+    suspend fun run(sources: List<LocalMedia>, target: LocalMedia, options: SwapOptions, voice: LocalMedia? = null, onProgress: (SwapProgress) -> Unit): SwapProgress {
         val result = try {
-            execute(sources, target, options, onProgress)
+            execute(sources, target, options, voice?.takeIf { options.lipSync }, onProgress)
         } catch (exception: ApiException) {
             SwapProgress.Failed(exception.userMessage, retryable = exception.status == 409 || exception.sessionLost)
         } catch (exception: UnreachableException) {
@@ -40,24 +38,26 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
         return result
     }
 
-    private suspend fun execute(sources: List<LocalMedia>, target: LocalMedia, options: SwapOptions, onProgress: (SwapProgress) -> Unit): SwapProgress {
+    private suspend fun execute(sources: List<LocalMedia>, target: LocalMedia, options: SwapOptions, voice: LocalMedia?, onProgress: (SwapProgress) -> Unit): SwapProgress {
         val session = connection.ensureOpen()
         if (session !is SessionState.Open) return SwapProgress.Failed((session as? SessionState.Failed)?.message ?: "Not connected.", true)
 
         val sourceIds = sources.mapIndexed { index, source ->
             connection.upload(AssetType.Source, source) { onProgress(SwapProgress.Uploading("face ${index + 1} of ${sources.size}", it)) }
         }
+        // The voice is one more source: FaceFusion takes the audio among the source files for lip sync.
+        val voiceIds = listOfNotNull(voice).map { connection.upload(AssetType.Source, it) { fraction -> onProgress(SwapProgress.Uploading("voice", fraction)) } }
         val targetId = connection.upload(AssetType.Target, target) { onProgress(SwapProgress.Uploading(target.name, it)) }
 
         onProgress(SwapProgress.Preparing)
         val keeper = connection.keeper
-        keeper.call { selectSources(sourceIds) }
+        keeper.call { selectSources(sourceIds + voiceIds) }
         keeper.call { selectTarget(targetId) }
-        val state = options.toState(forStream = false)
+        val state = options.toState(forStream = false, hasFaces = sourceIds.isNotEmpty(), hasVoice = voiceIds.isNotEmpty())
         connection.applyState(state)
 
         val jobId = keeper.call { createJob() }
-        keeper.call { addStep(jobId, state + ("processors" to JsonArray(options.processors.map(::JsonPrimitive)))) }
+        keeper.call { addStep(jobId, state) }
         keeper.call { submitJob(jobId) }
         keeper.call { runJob(jobId) }
 

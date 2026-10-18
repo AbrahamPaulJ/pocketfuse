@@ -140,4 +140,12 @@
     <string name="live_fell_back">WebRTC connected but no swapped video came back, so Live switched to the WebSocket stream. It is slower but needs only the HTTP port.</string>
     <string name="swap_no_face_badge">no face</string>
     <string name="swap_no_face">Your PC found no face in a photo marked "no face". Use a clear, front-facing photo, or the swap will fail.</string>
+    <string name="voice_title">Your voice (lip sync)</string>
+    <string name="voice_hint">Record a line and the target speaks it, with FaceFusion\'s lip_syncer. Works with or without a face swap. Use it on yourself or people who agreed to it.</string>
+    <string name="voice_record">Record</string>
+    <string name="voice_record_again">Record again</string>
+    <string name="voice_stop">Stop</string>
+    <string name="voice_recording">Recording</string>
+    <string name="voice_use">Lip sync</string>
+    <string name="voice_ready">%1$.1f s recorded</string>
 </resources>

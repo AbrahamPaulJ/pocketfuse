@@ -186,6 +186,17 @@ class ServerE2ETest {
     }
 
     @Test
+    fun lipSyncToARecordedVoice() = runBlocking {
+        connection.connect()
+        val runner = SwapRunner(connection, File(context.cacheDir, "e2e-out"))
+        val options = SwapOptions(lipSync = true).with("trim_frame_end", JsonPrimitive(25))
+        val result = withTimeout(600_000) {
+            runner.run(emptyList(), media("target-240p.mp4"), options, media("source.mp3")) { }
+        }
+        assertTrue("lip sync failed: $result", result is SwapProgress.Done)
+    }
+
+    @Test
     fun refreshRotatesAndCloseEnds() = runBlocking {
         connection.connect()
         val before = connection.client.tokens!!.accessToken

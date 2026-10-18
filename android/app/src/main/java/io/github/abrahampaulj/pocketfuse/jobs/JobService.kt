@@ -45,7 +45,7 @@ class JobService : Service() {
         }
         scope.launch {
             val runner = SwapRunner(connection, app.jobs.outputDirectory)
-            val result = runner.run(request.sources, request.target, request.options) { progress ->
+            val result = runner.run(request.sources, request.target, request.options, request.voice) { progress ->
                 app.jobs.report(progress)
                 describe(progress)?.let { (text, fraction) ->
                     getSystemService(NotificationManager::class.java).notify(NOTIFICATION_PROGRESS, progressNotification(text, fraction))

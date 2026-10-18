@@ -1,5 +1,7 @@
 package io.github.abrahampaulj.pocketfuse.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -53,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import io.github.abrahampaulj.pocketfuse.PocketfuseApp
 import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.Connection
@@ -64,6 +67,7 @@ import io.github.abrahampaulj.pocketfuse.core.SwapProgress
 import io.github.abrahampaulj.pocketfuse.core.SwapRequest
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
+import io.github.abrahampaulj.pocketfuse.media.VoiceRecorder
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -77,6 +81,15 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     val options by workspace.options.collectAsState()
     val progress by app.jobs.progress.collectAsState()
     val capabilities by connection.capabilities.collectAsState()
+    val voice by workspace.voice.collectAsState()
+    val recorder = remember { VoiceRecorder(context.applicationContext) }
+    var recording by remember { mutableStateOf(false) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            recorder.start()
+            recording = true
+        }
+    }
 
     var previewAtMs by remember { mutableFloatStateOf(0f) }
     var preview by remember { mutableStateOf<FrameResult?>(null) }
@@ -215,15 +228,46 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
             }
         }
 
+        Section(stringResource(R.string.voice_title)) {
+            Hint(stringResource(R.string.voice_hint))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (recording) {
+                    Button(onClick = {
+                        val file = recorder.stop()
+                        recording = false
+                        scope.launch {
+                            workspace.setVoice(file?.let { android.net.Uri.fromFile(it) })
+                            if (file != null) workspace.updateOptions { it.copy(lipSync = true) }
+                        }
+                    }) { Text(stringResource(R.string.voice_stop)) }
+                    Text(stringResource(R.string.voice_recording), color = Bad)
+                } else {
+                    OutlinedButton(onClick = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            recorder.start()
+                            recording = true
+                        } else {
+                            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }) { Text(stringResource(if (voice == null) R.string.voice_record else R.string.voice_record_again)) }
+                    if (voice != null) {
+                        FilterChip(selected = options.lipSync, onClick = { workspace.updateOptions { it.copy(lipSync = !it.lipSync) } }, label = { Text(stringResource(R.string.voice_use)) })
+                    }
+                }
+            }
+            voice?.let { Hint(stringResource(R.string.voice_ready, it.durationMs / 1000.0)) }
+        }
+
         JobPanel(progress, onDismiss = app.jobs::dismiss, onOpenResults = onOpenResults)
 
-        val ready = sources.isNotEmpty() && target != null && !app.jobs.isRunning
+        val hasVoice = options.lipSync && voice != null
+        val ready = (sources.isNotEmpty() || hasVoice) && target != null && !app.jobs.isRunning
         Button(
             onClick = {
                 val current = target ?: return@Button
                 val problem = MediaInspector.problems(current) { ext -> capabilities?.accepts(ext) ?: true }
                 if (problem != null) Toast.makeText(context, problem.message, Toast.LENGTH_LONG).show()
-                else app.jobs.start(SwapRequest(sources, current, options))
+                else app.jobs.start(SwapRequest(sources, current, options, voice.takeIf { hasVoice }))
             },
             enabled = ready,
             modifier = Modifier.fillMaxWidth().height(52.dp),

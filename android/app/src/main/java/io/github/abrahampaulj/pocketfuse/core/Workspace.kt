@@ -28,6 +28,14 @@ class Workspace(private val context: Context) {
     private val _target = MutableStateFlow<LocalMedia?>(null)
     val target: StateFlow<LocalMedia?> = _target.asStateFlow()
 
+    private val _voice = MutableStateFlow<LocalMedia?>(null)
+    /** A recording of the user's voice for lip sync; kept for the session only. */
+    val voice: StateFlow<LocalMedia?> = _voice.asStateFlow()
+
+    suspend fun setVoice(uri: Uri?) {
+        _voice.value = uri?.let { inspect(it) }
+    }
+
     private val _options = MutableStateFlow(
         prefs.getString("options", null)?.let { runCatching { json.decodeFromString<SwapOptions>(it) }.getOrNull() } ?: SwapOptions(),
     )

@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 /** A swap the user asked for, as handed to [JobService]. */
-data class SwapRequest(val sources: List<LocalMedia>, val target: LocalMedia, val options: SwapOptions)
+data class SwapRequest(val sources: List<LocalMedia>, val target: LocalMedia, val options: SwapOptions, val voice: LocalMedia? = null)
 
 /** The swap in progress (one at a time, as the server allows one queued job per session) and past results. */
 class JobCenter(private val context: Context) {

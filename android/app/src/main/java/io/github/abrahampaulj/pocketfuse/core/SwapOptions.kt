@@ -16,28 +16,32 @@ enum class FaceScope { MainPerson, Everyone }
 data class SwapOptions(
     val enhance: Boolean = false,
     val restoreExpression: Boolean = false,
+    val lipSync: Boolean = false,
     val faceScope: FaceScope = FaceScope.MainPerson,
     val overrides: Map<String, JsonElement> = emptyMap(),
 ) {
-    val processors: List<String>
-        get() = buildList {
-            add("face_swapper")
-            if (restoreExpression) add("expression_restorer")
-            if (enhance) add("face_enhancer")
-        }
+    val processors: List<String> get() = processors(hasFaces = true, hasVoice = false)
+
+    /** Without a source face there is nothing to swap; without a voice there is nothing to lip sync to. */
+    fun processors(hasFaces: Boolean, hasVoice: Boolean): List<String> = buildList {
+        if (hasFaces) add("face_swapper")
+        if (lipSync && hasVoice) add("lip_syncer")
+        if (restoreExpression) add("expression_restorer")
+        if (enhance) add("face_enhancer")
+    }
 
     /**
      * The state for a job. A job can use `reference` (track the first person by identity), but the stream
      * cannot: it has no reference frame and silently processes nothing under that mode, so [forStream]
      * maps the main person to `one` (the largest face) instead.
      */
-    fun toState(forStream: Boolean): Map<String, JsonElement> {
+    fun toState(forStream: Boolean, hasFaces: Boolean = true, hasVoice: Boolean = false): Map<String, JsonElement> {
         val selector = when (faceScope) {
             FaceScope.Everyone -> "many"
             FaceScope.MainPerson -> if (forStream) "one" else "reference"
         }
         return overrides + mapOf(
-            "processors" to JsonArray(processors.map(::JsonPrimitive)),
+            "processors" to JsonArray(processors(hasFaces, hasVoice).map(::JsonPrimitive)),
             "face_selector_mode" to JsonPrimitive(selector),
         )
     }
