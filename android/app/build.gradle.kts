@@ -50,6 +50,10 @@ android {
     }
 
     buildTypes {
+        // A separate app id, so the signed release and the test build install side by side.
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

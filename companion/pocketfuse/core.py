@@ -82,7 +82,7 @@ def serve(args : Namespace, server_args : List[str]) -> int:
 		print(translator.get('api_key_generated'))
 
 	print(translator.get('server_starting', host = host, port = args.api_port))
-	process = server_runner.start_server(facefusion_path, args.python_path, host, args.api_port, api_key, server_args)
+	process = server_runner.start_server(facefusion_path, args.python_path, host, args.api_port, api_key, server_runner.apply_default_args(server_args))
 	base_url = server_runner.create_base_url(host, args.api_port)
 
 	if not server_runner.wait_for_server(base_url, process, server_runner.READY_TIMEOUT):

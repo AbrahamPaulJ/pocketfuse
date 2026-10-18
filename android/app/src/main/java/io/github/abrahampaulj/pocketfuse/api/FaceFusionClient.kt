@@ -22,6 +22,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -155,12 +156,12 @@ class FaceFusionClient(
         return execute(Request.Builder().url(url).get().build(), Operation.Capture, longRunning = true).use { it.body!!.bytes() }
     }
 
-    suspend fun download(assetId: String, into: File, onProgress: (Float) -> Unit = {}): File {
+    suspend fun download(assetId: String, into: File, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
         val url = url("/assets/$assetId") { addQueryParameter("action", "download") }
-        execute(Request.Builder().url(url).get().build(), Operation.Download, longRunning = true).use { response ->
+        execute(Request.Builder().url(url).get().build(), Operation.Download, longRunning = true, streamBody = true).use { response ->
             val body = response.body!!
             val total = body.contentLength()
-            withContext(Dispatchers.IO) {
+            run {
                 into.parentFile?.mkdirs()
                 body.byteStream().use { input ->
                     into.outputStream().use { output ->
@@ -177,7 +178,7 @@ class FaceFusionClient(
                 }
             }
         }
-        return into
+        into
     }
 
     // ---- jobs
@@ -238,7 +239,18 @@ class FaceFusionClient(
     private fun get(path: String): Request = request(path).get().build()
     private fun post(path: String, body: RequestBody): Request = request(path).post(body).build()
 
-    private suspend fun execute(request: Request, operation: Operation, auth: Boolean = true, longRunning: Boolean = false): Response {
+    /**
+     * Sends [request] and returns the response with its body already read into memory, all on the IO
+     * dispatcher: reading or even closing an OkHttp body touches the socket, which Android forbids on the
+     * main thread, and callers include the UI. Only [streamBody] (downloads) hands back the live body.
+     */
+    private suspend fun execute(
+        request: Request,
+        operation: Operation,
+        auth: Boolean = true,
+        longRunning: Boolean = false,
+        streamBody: Boolean = false,
+    ): Response = withContext(Dispatchers.IO) {
         val authorized = if (auth) {
             val token = tokens?.accessToken ?: throw ApiException(401, null, operation)
             request.newBuilder().header("Authorization", "Bearer $token").build()
@@ -253,7 +265,15 @@ class FaceFusionClient(
             val message = response.use { runCatching { json.decodeFromString<Message>(it.body!!.string()).message }.getOrNull() }
             throw ApiException(response.code, message, operation)
         }
-        return response
+        if (streamBody) return@withContext response
+        try {
+            response.use { live ->
+                val body = live.body!!
+                live.newBuilder().body(body.bytes().toResponseBody(body.contentType())).build()
+            }
+        } catch (exception: IOException) {
+            throw UnreachableException(host, exception)
+        }
     }
 
     private inline fun <reified T> decode(response: Response): T = response.use { json.decodeFromString(it.body!!.string()) }

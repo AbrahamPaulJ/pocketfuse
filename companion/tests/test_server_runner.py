@@ -4,7 +4,7 @@ import tempfile
 
 import pytest
 
-from pocketfuse.server_runner import create_base_url, create_server_commands, create_server_environment, resolve_library_paths
+from pocketfuse.server_runner import apply_default_args, create_base_url, create_server_commands, create_server_environment, resolve_library_paths
 
 
 def test_create_server_commands() -> None:
@@ -12,6 +12,12 @@ def test_create_server_commands() -> None:
 	[
 		'python', 'facefusion.py', 'api', '--api-host', '100.64.0.2', '--api-port', '8000', '--api-session-limit', '4'
 	]
+
+
+def test_apply_default_args() -> None:
+	assert apply_default_args([]) == [ '--api-session-limit', '4' ]
+	assert apply_default_args([ '--api-session-limit', '1' ]) == [ '--api-session-limit', '1' ]
+	assert apply_default_args([ '--execution-providers', 'cuda' ]) == [ '--execution-providers', 'cuda', '--api-session-limit', '4' ]
 
 
 def test_create_server_environment(monkeypatch : pytest.MonkeyPatch) -> None:

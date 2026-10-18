@@ -3,6 +3,7 @@ package io.github.abrahampaulj.pocketfuse
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.core.JobCenter
 import io.github.abrahampaulj.pocketfuse.core.Workspace
@@ -10,6 +11,7 @@ import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
 import io.github.abrahampaulj.pocketfuse.pair.ServerStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,13 +39,23 @@ class PocketfuseApp : Application() {
         serverStore.load()?.let { pair(it, remember = false) }
     }
 
-    /** Switches to [config], closing the previous server's session first. */
+    private var connecting: Job? = null
+
+    /**
+     * Switches to [config], closing the previous server's session first. Pairing the server already in use
+     * keeps its session: opening a second one would count twice against the server's session limit.
+     */
     fun pair(config: ServerConfig, remember: Boolean = true) {
         if (remember) serverStore.save(config)
         val previous = _connection.value
+        if (previous?.config == config) {
+            if (previous.session.value is SessionState.Failed) connecting = scope.launch { previous.ensureOpen() }
+            return
+        }
+        connecting?.cancel()
         val next = Connection(this, config, scope)
         _connection.value = next
-        scope.launch {
+        connecting = scope.launch {
             previous?.close()
             next.connect()
         }
@@ -51,6 +63,7 @@ class PocketfuseApp : Application() {
 
     fun unpair() {
         val previous = _connection.value ?: return
+        connecting?.cancel()
         _connection.value = null
         serverStore.forget()
         scope.launch { previous.close() }

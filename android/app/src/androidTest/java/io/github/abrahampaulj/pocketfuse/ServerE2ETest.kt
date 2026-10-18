@@ -29,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -92,6 +93,17 @@ class ServerE2ETest {
         } catch (exception: ApiException) {
             assertEquals(401, exception.status)
             assertTrue(exception.userMessage.contains("API key"))
+        }
+    }
+
+    /** The UI calls the client from the main thread; Android throws on any socket read there. */
+    @Test
+    fun clientIsSafeToCallFromTheMainThread() = runBlocking {
+        withContext(Dispatchers.Main) {
+            assertTrue(connection.connect() is SessionState.Open)
+            connection.keeper.call { assets() }
+            connection.keeper.call { state() }
+            connection.keeper.close()
         }
     }
 

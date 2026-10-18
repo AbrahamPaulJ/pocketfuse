@@ -9,6 +9,10 @@ import httpx
 from pocketfuse.types import ApiKey, Host, Port, Url
 
 READY_TIMEOUT = 600
+DEFAULT_SERVER_ARGS =\
+{
+	'--api-session-limit': '4'
+}
 
 
 def resolve_library_paths(python_path : str) -> List[str]:
@@ -37,6 +41,16 @@ def create_server_environment(python_path : str, api_key : Optional[ApiKey]) -> 
 		server_environment['FACEFUSION_API_KEY'] = api_key
 
 	return server_environment
+
+
+def apply_default_args(server_args : List[str]) -> List[str]:
+	__server_args__ = list(server_args)
+
+	for argument_name, argument_value in DEFAULT_SERVER_ARGS.items():
+		if argument_name not in __server_args__:
+			__server_args__.extend([ argument_name, argument_value ])
+
+	return __server_args__
 
 
 def create_server_commands(python_path : str, host : Host, port : Port, server_args : List[str]) -> List[str]:

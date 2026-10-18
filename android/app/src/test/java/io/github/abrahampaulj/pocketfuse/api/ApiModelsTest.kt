@@ -10,6 +10,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** No user-facing text may contain it (project rule); spelled as a code point so this file has none either. */
+private val EM_DASH = Char(0x2014)
+
 /** Parses JSON captured from a real FaceFusion v4 server (src/test/resources). */
 class ApiModelsTest {
     private fun resource(name: String) = javaClass.classLoader!!.getResource(name)!!.readText()
@@ -65,7 +68,7 @@ class ApiModelsTest {
             statuses.forEach { status ->
                 val sentence = describe(status, operation)
                 assertFalse("$status $operation fell through", sentence.startsWith("Unexpected"))
-                assertFalse("em dash in: $sentence", '—' in sentence)
+                assertFalse("em dash in: $sentence", EM_DASH in sentence)
             }
         }
         assertTrue(ApiException(426, null, Operation.Jobs).sessionLost)

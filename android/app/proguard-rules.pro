@@ -8,3 +8,8 @@
 -keep class com.google.mediapipe.** { *; }
 -dontwarn com.google.mediapipe.**
 -dontwarn org.webrtc.**
+
+# MediaPipe ships AutoValue's annotation processor; its compile-time javax.lang.model references never run
+-dontwarn javax.lang.model.**
+-dontwarn autovalue.shaded.**
+-dontwarn com.google.auto.value.**
