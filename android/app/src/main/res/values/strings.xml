@@ -102,4 +102,14 @@
     <string name="server_sec_key">Sessions need the API key.</string>
     <string name="server_sec_no_key">No API key: anyone who can reach this port can use your GPU. Start the server with FACEFUSION_API_KEY set.</string>
     <string name="server_forget">Forget this server</string>
+    <string name="live_fps">%1$.1f fps from your PC</string>
+    <string name="live_connecting">Connecting</string>
+    <string name="live_need_face">Add a source face on the Swap tab first.</string>
+    <string name="live_idle">Your camera goes to your PC, which swaps every frame on its GPU and streams it back.</string>
+    <string name="live_front">Front camera</string>
+    <string name="live_microphone">Microphone</string>
+    <string name="live_start">Go live</string>
+    <string name="live_stop">Stop</string>
+    <string name="live_camera_denied">Camera permission is needed for the live stream.</string>
+    <string name="live_note">The live stream needs the phone to reach the PC directly: same Wi-Fi or the same tailnet. Frames the content check flags come back blurred.</string>
 </resources>
