@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The FaceFusion API speaks plain HTTP on the user's own LAN or tailnet. Cleartext is allowed
+     because the server offers nothing else; the app tells the user to keep it off the internet
+     and to set an API key. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

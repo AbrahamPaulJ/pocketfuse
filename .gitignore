@@ -1,0 +1,29 @@
+# Build output
+android/.gradle/
+android/build/
+android/app/build/
+android/.kotlin/
+android/local.properties
+android/captures/
+*.apk
+*.aab
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+
+# Secrets and private material never belong here
+*.jks
+*.keystore
+*.p12
+keystore.properties
+signing.properties
+.env
+*api_key*
+
+# Media: only the curated demo assets in media/ are committed
+work/
+*.log
