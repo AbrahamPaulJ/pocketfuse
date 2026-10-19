@@ -11,7 +11,8 @@ from pocketfuse.types import ApiKey, Host, Port, Url
 READY_TIMEOUT = 600
 DEFAULT_SERVER_ARGS =\
 {
-	'--api-session-limit': '4'
+	'--api-session-limit': '4',
+	'--video-memory-strategy': 'moderate'
 }
 
 

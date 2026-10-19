@@ -71,6 +71,9 @@ waits until it answers, and prints a pairing QR code and link. Any extra argumen
 for example `--execution-providers cuda`.
 
 - The key is fresh for every run. Set `FACEFUSION_API_KEY` to keep phones paired across restarts.
+- `serve` runs FaceFusion with `--video-memory-strategy moderate` unless you pass your own: the default
+  `strict` unloads the models during and after every job, which made a 2 s clip take 30 s on an RTX 3050
+  Laptop instead of 9 s.
 - On Windows with `pip install onnxruntime-gpu[cuda,cudnn]`, `serve` puts the pip CUDA libraries on the
   server's `PATH`; without that, FaceFusion silently falls back to the CPU.
 - `python pocketfuse.py probe --source-path face.jpg --target-path clip.mp4` checks a server end to end

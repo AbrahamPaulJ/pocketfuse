@@ -15,9 +15,10 @@ def test_create_server_commands() -> None:
 
 
 def test_apply_default_args() -> None:
-	assert apply_default_args([]) == [ '--api-session-limit', '4' ]
-	assert apply_default_args([ '--api-session-limit', '1' ]) == [ '--api-session-limit', '1' ]
-	assert apply_default_args([ '--execution-providers', 'cuda' ]) == [ '--execution-providers', 'cuda', '--api-session-limit', '4' ]
+	assert apply_default_args([]) == [ '--api-session-limit', '4', '--video-memory-strategy', 'moderate' ]
+	assert apply_default_args([ '--api-session-limit', '1' ]) == [ '--api-session-limit', '1', '--video-memory-strategy', 'moderate' ]
+	assert apply_default_args([ '--video-memory-strategy', 'strict' ]) == [ '--video-memory-strategy', 'strict', '--api-session-limit', '4' ]
+	assert apply_default_args([ '--execution-providers', 'cuda' ]) == [ '--execution-providers', 'cuda', '--api-session-limit', '4', '--video-memory-strategy', 'moderate' ]
 
 
 def test_create_server_environment(monkeypatch : pytest.MonkeyPatch) -> None:
