@@ -1,14 +1,14 @@
 package io.github.abrahampaulj.pocketfuse.ui
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -70,6 +70,7 @@ fun OptionsScreen(capabilities: Capabilities?, workspace: Workspace) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ArgumentControl(argument: Argument, override: JsonElement?, onChange: (JsonElement?) -> Unit) {
     val current = override ?: argument.default
@@ -105,7 +106,7 @@ private fun ArgumentControl(argument: Argument, override: JsonElement?, onChange
                     },
                 )
             }
-            argument.isMulti -> Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            argument.isMulti -> FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val selected = (current as? JsonArray)?.toSet().orEmpty()
                 choices.forEach { choice ->
                     FilterChip(

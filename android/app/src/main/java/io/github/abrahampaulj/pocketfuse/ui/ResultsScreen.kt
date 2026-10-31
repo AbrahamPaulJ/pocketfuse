@@ -21,6 +21,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -58,7 +61,7 @@ fun ResultsScreen(jobs: JobCenter) {
         item { Gap(4.dp) }
         items(results, key = { it.absolutePath }) { file ->
             Section(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(file.lastModified()))) {
-                Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(14.dp)).background(Color.Black)) {
+                Box(Modifier.fillMaxWidth().aspectRatio(rememberAspect(file)).clip(RoundedCornerShape(16.dp)).background(Color.Black)) {
                     if (Gallery.isVideo(file)) VideoPlayer(file) else ImageFile(file)
                     AiLabel(Modifier.align(Alignment.TopStart).padding(8.dp))
                 }
@@ -100,4 +103,30 @@ private fun VideoPlayer(file: File) {
 private fun ImageFile(file: File) {
     val bitmap = remember(file) { BitmapFactory.decodeFile(file.absolutePath) }
     BitmapImage(bitmap, Modifier.fillMaxSize(), androidx.compose.ui.layout.ContentScale.Fit)
+}
+
+/** The result's own shape, kept between 3:4 and 16:9, read off the main thread. */
+@Composable
+private fun rememberAspect(file: File): Float {
+    var aspect by remember(file) { mutableStateOf(16f / 9f) }
+    LaunchedEffect(file) {
+        aspect = withContext(Dispatchers.IO) {
+            runCatching {
+                if (Gallery.isVideo(file)) {
+                    android.media.MediaMetadataRetriever().use { retriever ->
+                        retriever.setDataSource(file.absolutePath)
+                        val width = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)!!.toFloat()
+                        val height = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)!!.toFloat()
+                        val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+                        if (rotation % 180 == 0) width / height else height / width
+                    }
+                } else {
+                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(file.absolutePath, options)
+                    options.outWidth.toFloat() / options.outHeight
+                }
+            }.getOrDefault(16f / 9f).coerceIn(0.75f, 16f / 9f)
+        }
+    }
+    return aspect
 }

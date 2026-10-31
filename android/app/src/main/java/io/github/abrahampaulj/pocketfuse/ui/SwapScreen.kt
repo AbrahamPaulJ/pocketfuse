@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -348,8 +349,10 @@ fun ChoicePicker(label: String?, choices: List<String>, selected: String?, onSel
 private fun BeforeAfter(before: ByteArray?, after: ByteArray?, fallback: LocalMedia) {
     var split by remember { mutableFloatStateOf(0.5f) }
     var width by remember { mutableFloatStateOf(1f) }
+    // The frame's own shape, kept between 3:4 and 16:9 so a portrait video is not cropped to a close-up.
+    val aspect = if (fallback.width > 0 && fallback.height > 0) (fallback.width.toFloat() / fallback.height).coerceIn(0.75f, 16f / 9f) else 16f / 9f
     Box(
-        Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Color.Black)
+        Modifier.fillMaxWidth().aspectRatio(aspect).clip(RoundedCornerShape(16.dp)).background(Color.Black)
             .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
             .pointerInput(after != null) {
                 if (after == null) return@pointerInput
@@ -357,9 +360,9 @@ private fun BeforeAfter(before: ByteArray?, after: ByteArray?, fallback: LocalMe
             },
     ) {
         if (before == null) MediaThumb(fallback, Modifier.fillMaxSize(), maxSide = 720)
-        else BytesImage(before, Modifier.fillMaxSize())
+        else BytesImage(before, Modifier.fillMaxSize(), ContentScale.Crop)
         if (after != null) {
-            BytesImage(after, Modifier.fillMaxSize().clip(RevealShape(split)))
+            BytesImage(after, Modifier.fillMaxSize().clip(RevealShape(split)), ContentScale.Crop)
             val density = LocalDensity.current
             val x = with(density) { (width * split).toDp() }
             Box(Modifier.fillMaxHeight().width(2.dp).offset(x = x - 1.dp).background(Color.White))

@@ -136,8 +136,8 @@ fun LabScreen(app: PocketfuseApp, connection: Connection, onGoToSwap: () -> Unit
         status?.let { Hint(it, color = Warn) }
 
         val current = options.overrides[axis.key] ?: capabilities?.get(axis.key)?.default
-        // Tiles take the target's shape, so a wide video is not letterboxed into a square.
-        val tileAspect = target?.takeIf { it.width > 0 && it.height > 0 }?.let { (it.width.toFloat() / it.height).coerceIn(0.5f, 2f) } ?: 1f
+        // Tiles take a wide target's shape (no letterbox); portrait targets get square tiles cropped to the centre.
+        val tileAspect = target?.takeIf { it.width > 0 && it.height > 0 }?.let { (it.width.toFloat() / it.height).coerceIn(1f, 2f) } ?: 1f
         tiles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { tile ->
