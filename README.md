@@ -123,6 +123,8 @@ FaceFusion v4 is a service layer that has to be secure, so the client must not u
 - Upload limits (512 MiB, 4096 px, accepted formats from `/capabilities`) are checked on the phone before
   a byte is sent; photos above 4096 px (2048 px for a source face) are scaled down on the phone.
 - The content analyser is untouched. Frames it flags come back blurred, and the app says so.
+- A photo you save or share carries the **AI GENERATED** label in its pixels, not only on screen. A shared
+  video carries it in the share text (its frames are not re-encoded), so label it yourself when you publish.
 
 
 Things the app handles so you do not have to
@@ -159,9 +161,9 @@ Tests
 
 | Suite | What | Run |
 |-------|------|-----|
-| Android JVM | 57 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
-| On the phone, against a real server | 12 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, lip sync to a voice, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 12/12 on `v4-challenge` (last run 2026-11-01: Galaxy S21 FE over Wi-Fi, 108 s); 11/12 on `v4` at `440fca7` (same night, 176 s; only the WebRTC test fails, the server issue in the beta feedback) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
-| Companion | flake8 and mypy with FaceFusion's own settings, 15 tests, plus a live probe test | `pytest` |
+| Android JVM | 65 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
+| On the phone, against a real server | 12 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, lip sync to a voice, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 12/12 on `v4-challenge` (last run 2026-11-01 for v1.2.0: Galaxy S21 FE over Wi-Fi, 120 s); 11/12 on `v4` at `440fca7` (same night, 176 s; only the WebRTC test fails, the server issue in the beta feedback) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
+| Companion | flake8 and mypy with FaceFusion's own settings, 17 tests, plus a live probe test | `pytest` |
 
 CI runs the companion checks and the Android build and JVM tests on every push.
 
