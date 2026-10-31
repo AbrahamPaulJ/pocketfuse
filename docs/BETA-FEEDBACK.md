@@ -16,6 +16,10 @@ URL and a file holding the API key.
 | 6 | `DELETE /session` after a video `capture` on Windows | `404`, session stays alive | fixed (`206`, session closed); the files stay on disk |
 | 7 | An expired session is deleted within a second, so the guard answers `401` instead of `426` and the refresh token dies with it | reproduces | reproduces |
 | 8 | Docs: `--video-memory-strategy strict` makes API jobs about 3x slower | | |
+| 9 | A JSON body that is not an object, or a numeric `api_key`, answers `500` (two of them before login) | reproduces | same code |
+| 10 | Upload validation checks only the first file of a multi-file `POST /assets` | reproduces | same code |
+| 11 | An expired session's temp and jobs folders are never removed | reproduces | same code |
+| 12 | `DELETE /session` right after a video job races the output capture: a traceback in the log | reproduces | same code |
 
 
 1. Concurrent content analysis in the WebRTC stream (CUDA)
@@ -107,3 +111,26 @@ Suggested: validate the boost against the session's current model and list choic
   the expiry, every 3 minutes.
 - **8.** The same 49 frame job: `strict` 30 s, `moderate` 9 s (models unload between frames under
   `strict`). For a long running API server `moderate` may be the better default, or worth a line in the guide.
+- **9. Malformed JSON answers `500`.** `POST /session`, `PUT /session`, `PUT /state` and
+  `PUT /state?action=select` call `body.get` or `body.items` on whatever `request.json()` returns, and
+  `validate_api_key` hands a non-string key to `secrets.compare_digest`. The exception middleware catches
+  only `JSONDecodeError`, `MultipartParseError` and `UnicodeDecodeError`, so a valid JSON array, string or
+  number answers `500` with a traceback in the log; `POST /session` and `PUT /session` need no login for
+  that. [`tools/beta/malformed_bodies.py`](../tools/beta/malformed_bodies.py) on `v4-challenge`: body `[]`
+  on all four, and `{"api_key": 123}`, answer `500`; `POST /jobs/{id}` with `[]` answers `400` for
+  comparison. Fix: an `isinstance(body, dict)` check (or a `400` for `AttributeError` and `TypeError`
+  in the request guard) and an `isinstance(api_key, str)` check.
+- **10. Only the first uploaded file is validated.** In `apis/asset_helper.py` `validate_asset_files`,
+  the `return media_type in [...]` sits inside the loop, so files 2 to n are never checked, and
+  `save_asset_files` then drops the bad one without a word. Same script: `[a.jpg, b.txt]` answers `201`
+  with one asset id for two files; `[b.txt, a.jpg]` answers `400`.
+- **11. Expired sessions leave their files on disk.** The expiry path (`store_manager`
+  `conditional_api_destroy`, then `destroy`) clears only the in-memory stores. Only `DELETE /session`
+  removes `<temp>/<session_id>` and `<jobs>/<session_id>`, and nothing sweeps them at start. A phone that
+  loses its network therefore leaves its uploads and outputs on the PC for good: this PC had 27 session
+  folders under `.jobs` and 13 matching temp folders (64 MB) from sessions that ended that way.
+- **12. Output capture races `DELETE /session`.** `capture_output_asset` runs as a second background task
+  after `run_job` has already marked the job `completed`. A client that sees `completed` and closes its
+  session at once removes the temp folder while ffprobe reads the output, and `extract_video_metadata`
+  raises `TypeError: float() argument must be ... not 'NoneType'` (`ffprobe.py`). Seen 8 times in our
+  server log, once after every benchmark job that closed its session straight away.
