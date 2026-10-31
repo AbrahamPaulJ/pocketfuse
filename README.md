@@ -128,7 +128,7 @@ Tests
 
 | Suite | What | Run |
 |-------|------|-----|
-| Android JVM | 48 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
+| Android JVM | 49 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
 | On the phone, against a real server | 12 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, lip sync to a voice, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 12/12 on `v4-challenge`; 11/12 on `v4` (the WebRTC issue above) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
 | Companion | flake8 and mypy with FaceFusion's own settings, 15 tests, plus a live probe test | `pytest` |
 
@@ -144,7 +144,8 @@ Credits
   (Apache-2.0), [libwebrtc via stream-webrtc-android](https://github.com/GetStream/webrtc-android),
   OkHttp, kotlinx.serialization, ML Kit barcode scanning, [segno](https://github.com/heuer/segno).
 
-**AI tools used:** built with Claude Code (Anthropic), as the challenge terms ask to disclose. Every
+**AI tools used:** built with Claude Code (Anthropic models), as the challenge terms ask to disclose.
+OpenAI Codex and OpenCode were tried for two delegated tasks; none of their output was kept. Every
 change was reviewed, tested on a real phone against a real server, and is covered by the suites above.
 
 

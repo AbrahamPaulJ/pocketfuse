@@ -1,0 +1,46 @@
+name: ci
+
+on: [ push, pull_request ]
+
+jobs:
+ companion:
+  runs-on: ubuntu-latest
+  defaults:
+   run:
+    working-directory: companion
+  steps:
+  - name: Checkout
+    uses: actions/checkout@v4
+  - name: Set up Python 3.12
+    uses: actions/setup-python@v5
+    with:
+     python-version: '3.12'
+  - run: pip install -r requirements.txt
+  - run: pip install flake8 flake8-import-order 'mypy<2.4' pytest
+  - run: flake8 pocketfuse.py pocketfuse tests
+  - run: mypy pocketfuse.py
+  - run: mypy pocketfuse tests
+  - run: pytest
+ android:
+  runs-on: ubuntu-latest
+  defaults:
+   run:
+    working-directory: android
+  steps:
+  - name: Checkout
+    uses: actions/checkout@v4
+  - name: Set up JDK 17
+    uses: actions/setup-java@v4
+    with:
+     distribution: temurin
+     java-version: '17'
+  - name: Set up Gradle
+    uses: gradle/actions/setup-gradle@v4
+  - run: chmod +x gradlew
+  - run: ./gradlew assembleDebug testDebugUnitTest --console=plain
+  - name: Screens
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+     name: screens
+     path: android/app/build/screens/
