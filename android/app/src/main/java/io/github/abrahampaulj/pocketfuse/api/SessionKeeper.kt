@@ -20,13 +20,14 @@ sealed interface SessionState {
 }
 
 /**
- * Keeps one FaceFusion session alive. A session lives 10 minutes on `v4-challenge` and 5 minutes on the
- * `v4` branch, both tokens share that expiry, so the keeper rotates them well before the shorter one
- * ([REFRESH_EVERY_MS]). The phone's clock is never compared with the server's `expires_at`: they can differ. When the server says the session is gone
- * (401 or 426) the keeper never retries the call that failed: it reports the loss, because the server
- * has already dropped the session's assets and jobs, and opens a new session only when asked. The one
- * exception is a 401 for an access token the keeper itself rotated away while the call was in flight:
- * the session is alive, so that call is sent once more with the new token.
+ * Keeps one FaceFusion session alive. On `v4-challenge` both tokens share one 10 minute expiry and the
+ * server deletes the session the moment it passes, so the keeper rotates them well before it
+ * ([REFRESH_EVERY_MS]). On `v4` since 647be8b the access token lasts half the session and the refresh token
+ * the whole of it, so a call turned away with 401 is answered the standard way: refresh, then send the call
+ * once more. The phone's clock is never compared with the server's `expires_at`: they can differ. When the
+ * refresh fails too, the session is gone: the keeper reports the loss and opens a new session only when
+ * asked. A 401 for an access token the keeper itself rotated away while the call was in flight is sent
+ * again with the new token, without a second refresh.
  */
 class SessionKeeper(
     val client: FaceFusionClient,
@@ -79,17 +80,29 @@ class SessionKeeper(
 
     /**
      * Judges a 401 or 426 once any refresh under way has finished. True when the call only carried an
-     * access token the keeper has since rotated away; otherwise the session is marked lost. A call whose
+     * access token the keeper has since rotated away, or when a refresh renews the session now; otherwise
+     * the session is marked lost. A call whose
      * session is no longer the open one (closed, already lost, being reopened or replaced) changes nothing:
      * marking it lost then would wipe the tokens of a session that [open] is setting up.
      */
-    private fun settle(exception: ApiException, session: SessionState, sent: String?, mayRepeat: Boolean): Boolean {
+    private suspend fun settle(exception: ApiException, session: SessionState, sent: String?, mayRepeat: Boolean): Boolean {
         val now = _state.value
         if (now !is SessionState.Open || now != session) return false
         val current = client.tokens?.accessToken
         if (mayRepeat && exception.status == 401 && sent != null && current != null && current != sent) return true
+        if (mayRepeat && sent != null && current == sent && renew()) return true
         markLost(exception.userMessage)
         return false
+    }
+
+    /** Refreshes after the server turned the access token away; false when the refresh token is refused too. */
+    private suspend fun renew(): Boolean = try {
+        client.refreshSession()
+        true
+    } catch (_: ApiException) {
+        false
+    } catch (_: UnreachableException) {
+        false
     }
 
     /**

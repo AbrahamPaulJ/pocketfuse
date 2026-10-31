@@ -14,7 +14,7 @@ URL and a file holding the API key.
 | 4 | Pixel boost choices follow the launch model, not the session's model | reproduces | reproduces |
 | 5 | `/stream` under the default `face_selector_mode = reference` processes nothing | reproduces | fixed (reference maps) |
 | 6 | `DELETE /session` after a video `capture` on Windows | `404`, session stays alive | fixed (`206`, session closed); the files stay on disk |
-| 7 | An expired session is deleted within a second, so the guard answers `401` instead of `426` and the refresh token dies with it | reproduces | reproduces |
+| 7 | An expired session is deleted within a second, so the guard answers `401` instead of `426` and the refresh token dies with it | reproduces | fixed in `647be8b` |
 | 8 | Docs: `--video-memory-strategy strict` makes API jobs about 3x slower | | |
 | 9 | A JSON body that is not an object, or a numeric `api_key`, answers `500` (two of them before login) | reproduces | same code |
 | 10 | Upload validation checks only the first file of a multi-file `POST /assets` | reproduces | same code |
@@ -109,9 +109,10 @@ Suggested: validate the boost against the session's current model and list choic
   Measured with [`tools/beta/refresh_after_expiry.py`](../tools/beta/refresh_after_expiry.py) on both
   branches: after the expiry (310 s on `v4`, 610 s on `v4-challenge`) the request answers
   `401 invalid access token`, and `PUT /session` with the refresh token answers `401 something went wrong`.
-  Henry confirmed it is a bug (the session is killed too early). The fix is likely to keep an expired
-  session, and to accept its refresh token, for a grace period. Until then, Pocketfuse refreshes before
-  the expiry, every 3 minutes.
+  Henry confirmed it is a bug and fixed it on `v4` in `647be8b` (#1261): the access token now expires at
+  half the session's life and the refresh token at its end. Pocketfuse 1.3.0 follows that flow (a call
+  turned away with `401` is refreshed and sent once more) and keeps refreshing every 3 minutes for
+  `v4-challenge`, where the refresh still dies with the session.
 - **8.** The same 49 frame job: `strict` 30 s, `moderate` 9 s (models unload between frames under
   `strict`). For a long running API server `moderate` may be the better default, or worth a line in the guide.
 - **9. Malformed JSON answers `500`.** `POST /session`, `PUT /session`, `PUT /state` and

@@ -64,7 +64,7 @@ API coverage
 
 | Area | Where Pocketfuse uses it |
 |------|--------------------------|
-| Sessions | open with the API key, rotate both tokens every 3 minutes (a session lives 10 minutes on `v4-challenge`, 5 on `v4`), treat `401` and `426` as "session lost", except for a call whose token was rotated while it was in flight: that one is sent once more with the new token (the server refuses an unknown token before any handler runs), close on unpair |
+| Sessions | open with the API key, rotate both tokens every 3 minutes (a session lives 10 minutes on `v4-challenge`, 5 on `v4`), a call turned away with `401` is refreshed and sent once more (the flow `v4` supports since `647be8b`); when the refresh is refused too, as on `v4-challenge` once the session expired, the session is reported lost, close on unpair |
 | State | every swap, preview, live stream, lab tile and puppet frame sets its options; only changed keys are sent |
 | Capabilities | the **All options** screen is built entirely from `GET /capabilities`: a slider for numeric ranges, chips for lists, a menu for choices, a text field for free input. A newer FaceFusion shows its new options with no app update |
 | Assets | multipart upload with progress, `capture` to show the face the PC found in each source photo (or warn that it found none, before a job fails on it), `download` of outputs, uploads remembered per session, `DELETE /assets/{id}` for the target and result once a swap is on the phone, `DELETE /assets` behind the PC tab's "Delete my files on the PC" |
@@ -165,7 +165,7 @@ Tests
 
 | Suite | What | Run |
 |-------|------|-----|
-| Android JVM | 69 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
+| Android JVM | 70 tests: client contract against a mock server, real captured `/capabilities` and `/metrics`, pairing, every error status has a sentence, faststart, SDP, puppet maths; plus a render of every screen (Roborazzi) | `./gradlew testDebugUnitTest` |
 | On the phone, against a real server | 12 tests over the real network path: sessions, wrong key, capture and the face check, stream preview, full swap job, lip sync to a voice, metrics socket, token rotation, every call made from the main thread, puppet values accepted by the server, model warm-up, and a WebRTC stream that must come back processed. 12/12 on `v4-challenge` (last run 2026-11-01 for v1.2.0: Galaxy S21 FE over Wi-Fi, 120 s); 11/12 on `v4` at `440fca7` (same night, 176 s; only the WebRTC test fails, the server issue in the beta feedback) | `tools/e2e_phone.ps1 -Serial <adb serial> -Pairing <link>` |
 | Companion | flake8 and mypy with FaceFusion's own settings, 17 tests, plus a live probe test | `pytest` |
 

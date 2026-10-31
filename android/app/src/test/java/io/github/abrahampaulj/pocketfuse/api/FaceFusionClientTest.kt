@@ -103,6 +103,8 @@ class FaceFusionClientTest {
         server.enqueue(json("""{"name":"FaceFusion","version":"v4"}"""))
         server.enqueue(json(tokens, 201))
         server.enqueue(json("""{"message":"invalid access token"}""", 401))
+        // v4-challenge: the refresh token expired with the session.
+        server.enqueue(json("""{"message":"something went wrong"}""", 401))
         val keeper = SessionKeeper(client, null, scope)
         assertTrue(keeper.open() is SessionState.Open)
         try {
@@ -111,6 +113,29 @@ class FaceFusionClientTest {
         }
         assertTrue(keeper.state.value is SessionState.Failed)
         assertNull(client.tokens)
+        assertEquals(4, server.requestCount)
+        scope.cancel()
+    }
+
+    @Test
+    fun aCallTurnedAwayIsSentAgainAfterARefresh() = runBlocking {
+        // v4 since 647be8b: the access token expires at half time, the refresh token still renews the session.
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        server.enqueue(json("""{"name":"FaceFusion","version":"v4"}"""))
+        server.enqueue(json(tokens, 201))
+        server.enqueue(json("""{"message":"invalid access token"}""", 401))
+        server.enqueue(json("""{"access_token":"A2","refresh_token":"R2"}"""))
+        server.enqueue(json("{}"))
+        val keeper = SessionKeeper(client, null, scope)
+        assertTrue(keeper.open() is SessionState.Open)
+        keeper.call { state() }
+        assertTrue(keeper.state.value is SessionState.Open)
+        assertEquals(Tokens("A2", "R2"), client.tokens)
+        server.takeRequest()
+        server.takeRequest()
+        assertEquals("Bearer ACCESS", server.takeRequest().getHeader("Authorization"))
+        assertEquals("PUT", server.takeRequest().method)
+        assertEquals("Bearer A2", server.takeRequest().getHeader("Authorization"))
         scope.cancel()
     }
 
