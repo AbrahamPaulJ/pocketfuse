@@ -42,9 +42,7 @@ class MetricsFeed(
     private var retryDelayMs = RETRY_FIRST_MS
 
     private val listener = object : WebSocketListener() {
-        override fun onOpen(webSocket: WebSocket, response: Response) {
-            _connected.value = true
-        }
+        override fun onOpen(webSocket: WebSocket, response: Response) = opened(webSocket)
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             retryDelayMs = RETRY_FIRST_MS
@@ -64,6 +62,10 @@ class MetricsFeed(
         connect()
     }
 
+    /**
+     * [connect], [opened], [dropped] and [stop] share one lock: OkHttp calls the listener on its own
+     * threads, and a socket that fails at once must not report before [socket] holds it.
+     */
     @Synchronized
     private fun connect() {
         if (socket != null) return
@@ -79,6 +81,12 @@ class MetricsFeed(
         _history.value = (_history.value + metrics).takeLast(historySize)
     }
 
+    @Synchronized
+    private fun opened(webSocket: WebSocket) {
+        if (webSocket === socket) _connected.value = true
+    }
+
+    @Synchronized
     private fun dropped(webSocket: WebSocket) {
         if (webSocket !== socket) return
         disconnected()
@@ -98,12 +106,14 @@ class MetricsFeed(
     }
 
     fun stop() {
-        keepOpen = { false }
-        retry?.cancel()
-        retry = null
-        retryDelayMs = RETRY_FIRST_MS
-        socket?.close(1000, null)
-        disconnected()
+        val closing = synchronized(this) {
+            keepOpen = { false }
+            retry?.cancel()
+            retry = null
+            retryDelayMs = RETRY_FIRST_MS
+            socket.also { disconnected() }
+        }
+        closing?.close(1000, null)
     }
 
     companion object {

@@ -79,14 +79,15 @@ class SessionKeeper(
 
     /**
      * Judges a 401 or 426 once any refresh under way has finished. True when the call only carried an
-     * access token the keeper has since rotated away; otherwise the session is marked lost, unless the
-     * call belonged to an older session that has already been replaced.
+     * access token the keeper has since rotated away; otherwise the session is marked lost. A call whose
+     * session is no longer the open one (closed, already lost, being reopened or replaced) changes nothing:
+     * marking it lost then would wipe the tokens of a session that [open] is setting up.
      */
     private fun settle(exception: ApiException, session: SessionState, sent: String?, mayRepeat: Boolean): Boolean {
         val now = _state.value
-        if (now is SessionState.Open && now != session) return false
+        if (now !is SessionState.Open || now != session) return false
         val current = client.tokens?.accessToken
-        if (mayRepeat && exception.status == 401 && now is SessionState.Open && sent != null && current != null && current != sent) return true
+        if (mayRepeat && exception.status == 401 && sent != null && current != null && current != sent) return true
         markLost(exception.userMessage)
         return false
     }
