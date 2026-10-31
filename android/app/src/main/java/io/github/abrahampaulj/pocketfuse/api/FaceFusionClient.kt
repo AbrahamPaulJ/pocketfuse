@@ -150,6 +150,11 @@ class FaceFusionClient(
         execute(request("/assets/$assetId").delete().build(), Operation.Assets).close()
     }
 
+    /** Every asset of this session: uploads and outputs. Other sessions' files are out of its reach. */
+    suspend fun deleteAssets() {
+        execute(request("/assets").delete().build(), Operation.Assets).close()
+    }
+
     /**
      * Frames or detected faces of an asset as JPEG tiles. A frame index is always sent: the `v4` branch
      * requires one even for an image, and `v4-challenge` accepts it.

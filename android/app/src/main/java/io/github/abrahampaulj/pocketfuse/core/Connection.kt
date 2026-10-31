@@ -90,6 +90,29 @@ class Connection(private val context: Context, val config: ServerConfig, scope: 
 
     fun knownAsset(type: AssetType, uri: Uri): String? = uploaded["$generation|${type.wire}|$uri"]
 
+    /**
+     * Deletes [assetIds] from the PC once the phone has what it needs. Never throws: a file already gone
+     * answers 404, and Windows can answer 500 while a file is still held open; DELETE /session or the PC
+     * tab's delete button still covers what is left. The ids leave the upload cache so the next use uploads again.
+     */
+    suspend fun forget(assetIds: Collection<String>) {
+        uploadLock.withLock {
+            assetIds.forEach { assetId -> runCatching { keeper.call { deleteAsset(assetId) } } }
+            uploaded.values.removeAll(assetIds.toSet())
+        }
+    }
+
+    /** Deletes every upload and result this session put on the PC; throws what the server answered. */
+    suspend fun forgetAll() {
+        uploadLock.withLock {
+            try {
+                keeper.call { deleteAssets() }
+            } finally {
+                uploaded.clear()
+            }
+        }
+    }
+
     /** Sends only the options that differ from what this session already has. */
     suspend fun applyState(values: Map<String, JsonElement>) {
         val changed = values.filter { (key, value) -> appliedState[key] != value }

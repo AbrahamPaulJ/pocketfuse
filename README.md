@@ -63,7 +63,7 @@ API coverage
 | Sessions | open with the API key, rotate both tokens every 3 minutes (a session lives 10 minutes on `v4-challenge`, 5 on `v4`), treat `401` and `426` as "session lost" and never retry the failed call, close on unpair |
 | State | every swap, preview, live stream, lab tile and puppet frame sets its options; only changed keys are sent |
 | Capabilities | the **All options** screen is built entirely from `GET /capabilities`: a slider for numeric ranges, chips for lists, a menu for choices, a text field for free input. A newer FaceFusion shows its new options with no app update |
-| Assets | multipart upload with progress, `capture` to show the face the PC found in each source photo (or warn that it found none, before a job fails on it), `download` of outputs, uploads remembered per session |
+| Assets | multipart upload with progress, `capture` to show the face the PC found in each source photo (or warn that it found none, before a job fails on it), `download` of outputs, uploads remembered per session, `DELETE /assets/{id}` for the target and result once a swap is on the phone, `DELETE /assets` behind the PC tab's "Delete my files on the PC" |
 | Jobs | create, add step, submit, run, poll, find the output asset named after the job; also used to download models before streaming (see below) |
 | Stream | WebRTC (`POST /stream`, `DELETE /stream`) for Live; the `/stream` WebSocket for preview, Lab and Puppet |
 | Metrics | the `/metrics` WebSocket feeds the PC dashboard |

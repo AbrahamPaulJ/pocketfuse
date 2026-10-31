@@ -41,7 +41,7 @@ private val JOB_STATUSES = listOf("drafted", "queued", "completed", "failed")
 
 /** The PC at a glance: live load from /metrics, the session, the jobs the server holds, and security. */
 @Composable
-fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Workspace? = null) {
+fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Workspace? = null, jobsRunning: Boolean = false) {
     val scope = rememberCoroutineScope()
     val session by connection.session.collectAsState()
     val latest by connection.metrics.latest.collectAsState()
@@ -50,6 +50,7 @@ fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Worksp
     var info by remember { mutableStateOf<SessionInfo?>(null) }
     var jobs by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var message by remember { mutableStateOf<String?>(null) }
+    var wipeResult by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
 
     suspend fun reload() {
         if (session !is SessionState.Open) return
@@ -110,6 +111,23 @@ fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Worksp
                 } else {
                     OutlinedButton(onClick = { scope.launch { connection.ensureOpen() } }) { Text(stringResource(R.string.server_reconnect)) }
                 }
+            }
+            if (state is SessionState.Open) {
+                val wiped = stringResource(R.string.server_wipe_done)
+                OutlinedButton(enabled = !jobsRunning, onClick = {
+                    scope.launch {
+                        wipeResult = try {
+                            connection.forgetAll()
+                            wiped to true
+                        } catch (exception: ApiException) {
+                            exception.userMessage to false
+                        } catch (exception: UnreachableException) {
+                            exception.userMessage to false
+                        }
+                    }
+                }) { Text(stringResource(R.string.server_wipe)) }
+                Hint(stringResource(if (jobsRunning) R.string.server_wipe_busy else R.string.server_wipe_hint))
+                wipeResult?.let { (text, ok) -> Hint(text, color = if (ok) Ok else Bad) }
             }
         }
 
