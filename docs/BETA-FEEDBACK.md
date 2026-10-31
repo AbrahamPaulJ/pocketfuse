@@ -14,7 +14,7 @@ URL and a file holding the API key.
 | 4 | Pixel boost choices follow the launch model, not the session's model | reproduces | reproduces |
 | 5 | `/stream` under the default `face_selector_mode = reference` processes nothing | reproduces | fixed (reference maps) |
 | 6 | `DELETE /session` after a video `capture` on Windows | `404`, session stays alive | fixed (`206`, session closed); the files stay on disk |
-| 7 | Docs: an expired token answers `426`, the guide lists `401` | | |
+| 7 | Docs: a session that expired without a refresh answers `426`; the guide lists only `401` | | |
 | 8 | Docs: `--video-memory-strategy strict` makes API jobs about 3x slower | | |
 
 
@@ -93,7 +93,10 @@ Suggested: validate the boost against the session's current model and list choic
 - **6, fixed on `v4`.** A `capture` on a video keeps an ffmpeg reader open; Windows cannot delete the
   file, and `v4-challenge` returned `404` before clearing the session, so its tokens stayed valid. `v4`
   answers `206` and closes the session; the files still stay in the temp folder until restart.
-- **7.** A known but expired access token answers `426 Upgrade Required`; the guide's error table lists
-  only `401`. Clients must treat both as "session lost".
+- **7, docs only.** When a session expires without a refresh, its access token answers
+  `426 Upgrade Required` (`middlewares/session.py`), and its refresh token no longer works either
+  (`PUT /session` answers `401`), so the client has to open a new session. That is by design; the guide's
+  error table just lists only `401`. Pocketfuse refreshes every 3 minutes, so it meets `426` only when a
+  sleeping phone delays the refresh past the expiry (Android Doze); it then opens a new session.
 - **8.** The same 49 frame job: `strict` 30 s, `moderate` 9 s (models unload between frames under
   `strict`). For a long running API server `moderate` may be the better default, or worth a line in the guide.
