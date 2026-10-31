@@ -3,15 +3,18 @@ package io.github.abrahampaulj.pocketfuse.media
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
+import io.github.abrahampaulj.pocketfuse.api.AssetType
 import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.api.UploadPart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 
 /** A photo or video the user picked or shared, inspected on the phone before anything is sent. */
 data class LocalMedia(
@@ -45,6 +48,8 @@ sealed interface MediaProblem {
 }
 
 object MediaInspector {
+    /** Long side a source photo is sent at: the swap works on a face crop of 112 to 256 px, so this is ample. */
+    const val MAX_SOURCE_SIDE = 2048
 
     fun inspect(context: Context, uri: Uri): LocalMedia {
         val resolver = context.contentResolver
@@ -96,24 +101,27 @@ object MediaInspector {
      * Turns [media] into what the server accepts: photos above 4096 px are scaled down, HEIC / HEIF / AVIF
      * photos become JPEG, MP4 / MOV / M4A get
      * their `moov` atom moved to the front ([Faststart]). Everything else streams straight from the picker.
+     * A source photo is capped at [MAX_SOURCE_SIDE]: the server hashes the whole source image on every
+     * stream frame, and the face it uses is far smaller. Copies made here come back as [UploadPart.temporary].
      */
-    suspend fun prepareUpload(context: Context, media: LocalMedia): UploadPart = withContext(Dispatchers.IO) {
+    suspend fun prepareUpload(context: Context, media: LocalMedia, type: AssetType): UploadPart = withContext(Dispatchers.IO) {
         val cache = File(context.cacheDir, "uploads").apply { mkdirs() }
+        val maxSide = if (type == AssetType.Source) MAX_SOURCE_SIDE else FaceFusionClient.MAX_RESOLUTION
         when {
-            !media.isVideo && (maxOf(media.width, media.height) > FaceFusionClient.MAX_RESOLUTION || needsJpeg(media)) -> {
-                val scaled = File(cache, media.name.substringBeforeLast('.') + ".jpg")
-                decodeScaled(context, media.uri, FaceFusionClient.MAX_RESOLUTION)?.let { bitmap ->
-                    scaled.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }
+            !media.isVideo && (maxOf(media.width, media.height) > maxSide || needsJpeg(media)) -> {
+                val scaled = File.createTempFile("photo", ".jpg", cache)
+                (decodeUpright(context, media.uri, maxSide) ?: decodeScaled(context, media.uri, maxSide))?.let { bitmap ->
+                    scaled.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, if (type == AssetType.Source) 92 else 95, it) }
                 }
-                fileUpload(scaled, "image/jpeg")
+                fileUpload(scaled, "image/jpeg", media.name.substringBeforeLast('.') + ".jpg")
             }
             media.extension in setOf("mp4", "mov", "m4a", "m4v") -> {
-                val copy = File(cache, "original." + media.extension)
+                val copy = File.createTempFile("original", "." + media.extension, cache)
                 context.contentResolver.openInputStream(media.uri)!!.use { input -> copy.outputStream().use { input.copyTo(it) } }
-                val fast = File(cache, media.name)
+                val fast = File.createTempFile("faststart", "." + media.extension, cache)
                 when (Faststart.rewrite(copy, fast)) {
-                    is Faststart.Result.Rewritten -> fileUpload(fast, media.mimeType).also { copy.delete() }
-                    else -> fileUpload(copy, media.mimeType, media.name)
+                    is Faststart.Result.Rewritten -> fileUpload(fast, media.mimeType, media.name).also { copy.delete() }
+                    else -> fileUpload(copy, media.mimeType, media.name).also { fast.delete() }
                 }
             }
             else -> UploadPart(media.name, media.mimeType, media.size) { context.contentResolver.openInputStream(media.uri)!! }
@@ -146,8 +154,27 @@ object MediaInspector {
         return Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt(), (decoded.height * scale).toInt(), true)
     }
 
-    private fun fileUpload(file: File, mimeType: String, name: String = file.name) =
-        UploadPart(name, mimeType, file.length()) { file.inputStream() }
+    /**
+     * Like [decodeScaled], but upright: ImageDecoder applies the EXIF orientation BitmapFactory ignores, and a
+     * re-encoded JPEG carries no EXIF, so a sideways portrait would reach the face detector sideways.
+     */
+    private fun decodeUpright(context: Context, uri: Uri, maxSide: Int): Bitmap? = try {
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            val scale = maxSide.toFloat() / maxOf(info.size.width, info.size.height)
+            if (scale < 1f) decoder.setTargetSize((info.size.width * scale).toInt().coerceAtLeast(1), (info.size.height * scale).toInt().coerceAtLeast(1))
+        }
+    } catch (_: IOException) {
+        null
+    }
+
+    /** Upload copies left behind by an upload the app was killed in; each finished upload deletes its own. */
+    fun clearUploads(context: Context, olderThan: Long) {
+        File(context.cacheDir, "uploads").listFiles()?.filter { it.lastModified() < olderThan }?.forEach { it.delete() }
+    }
+
+    private fun fileUpload(file: File, mimeType: String, name: String) =
+        UploadPart(name, mimeType, file.length(), temporary = file) { file.inputStream() }
 
     private fun guessMime(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
         "jpg", "jpeg" -> "image/jpeg"

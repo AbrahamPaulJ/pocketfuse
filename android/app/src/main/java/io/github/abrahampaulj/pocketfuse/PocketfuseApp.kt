@@ -7,6 +7,7 @@ import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.core.JobCenter
 import io.github.abrahampaulj.pocketfuse.core.Workspace
+import io.github.abrahampaulj.pocketfuse.media.MediaInspector
 import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
 import io.github.abrahampaulj.pocketfuse.pair.ServerStore
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +37,8 @@ class PocketfuseApp : Application() {
         workspace = Workspace(this)
         jobs = JobCenter(this)
         createChannels()
+        val startedAt = System.currentTimeMillis()
+        scope.launch(Dispatchers.IO) { MediaInspector.clearUploads(this@PocketfuseApp, olderThan = startedAt) }
         scope.launch { workspace.restore() }
         serverStore.load()?.let { pair(it, remember = false) }
     }
