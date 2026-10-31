@@ -53,6 +53,9 @@ API coverage
 Setup
 -----
 
+The short version is below. Step by step, with every screen and a troubleshooting table:
+**[docs/USER-GUIDE.md](docs/USER-GUIDE.md)**.
+
 You need a PC with FaceFusion v4 installed (see the
 [installation guide](https://docs.facefusion.io/installation)) and an Android phone (10 or newer, arm64)
 on the same Wi-Fi, or on the same [Tailscale](https://tailscale.com) tailnet.
@@ -121,6 +124,15 @@ Found while building, each written up for the FaceFusion team:
 - **The `v4` branch.** At the time of testing its WebRTC peer stopped before the track opened, so no
   frame was processed and Live shows a clear hint instead of hanging. Its `capture` needs a frame index even for photos and answers
   `multipart/mixed`; Pocketfuse sends one and reads both formats.
+
+
+Beta feedback
+-------------
+
+Eight findings from building against the v4 API, each re-checked on `v4-challenge` and the latest `v4`,
+with repro scripts: [docs/BETA-FEEDBACK.md](docs/BETA-FEEDBACK.md). The two that matter most: a WebRTC
+stream can crash the whole API on CUDA (the content analyser runs without a lock), and on `v4` a session
+whose stream crashed can never be closed by its client.
 
 
 Tests
