@@ -161,6 +161,19 @@ class FaceFusionClientTest {
     }
 
     @Test
+    fun deletingEveryAssetIsOneDeleteOnAssets() = runBlocking {
+        server.enqueue(json(tokens, 201))
+        server.enqueue(MockResponse().setResponseCode(200))
+        client.openSession(null)
+        client.deleteAssets()
+        server.takeRequest()
+        val delete = server.takeRequest()
+        assertEquals("DELETE", delete.method)
+        assertEquals("/assets", delete.path)
+        assertEquals("Bearer ACCESS", delete.getHeader("Authorization"))
+    }
+
+    @Test
     fun uploadsUseTheFileFieldTheGuideNames() = runBlocking {
         server.enqueue(json(tokens, 201))
         server.enqueue(json("""{"asset_ids":["a1"]}""", 201))

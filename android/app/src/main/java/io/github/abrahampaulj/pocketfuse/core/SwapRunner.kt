@@ -107,6 +107,8 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
         val asset = keeper.call { asset(assetId) }
         val file = File(outputDirectory, "$jobId.${asset.format}")
         keeper.call { download(assetId, file) { onProgress(SwapProgress.Downloading(it)) } }
+        // The result is on the phone, so the PC keeps neither it nor this swap's target. Sources stay: a batch reuses them.
+        connection.forget(listOf(assetId, targetId))
         return SwapProgress.Done(file, jobId, seconds)
     }
 
