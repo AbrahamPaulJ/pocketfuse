@@ -29,6 +29,7 @@ import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.api.ApiException
 import io.github.abrahampaulj.pocketfuse.api.SessionInfo
 import io.github.abrahampaulj.pocketfuse.api.SessionState
+import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.core.Workspace
 import io.github.abrahampaulj.pocketfuse.pair.AddressKind
@@ -128,6 +129,8 @@ fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Worksp
                                     connection.keeper.call { deleteJob(id) }
                                     null
                                 } catch (exception: ApiException) {
+                                    exception.userMessage
+                                } catch (exception: UnreachableException) {
                                     exception.userMessage
                                 }
                                 reload()

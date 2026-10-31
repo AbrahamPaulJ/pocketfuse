@@ -3,6 +3,7 @@ package io.github.abrahampaulj.pocketfuse.core
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.jobs.JobService
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +80,8 @@ class JobCenter(private val context: Context) {
         _results.value = scanResults()
     }
 
+    // A download cut short by the app being killed stays a `.part` file and is not a result.
     private fun scanResults(): List<File> =
-        File(context.cacheDir, "outputs").listFiles()?.filter { it.isFile }?.sortedByDescending { it.lastModified() }.orEmpty()
+        File(context.cacheDir, "outputs").listFiles()?.filter { it.isFile && !it.name.endsWith(FaceFusionClient.PARTIAL_SUFFIX) }
+            ?.sortedByDescending { it.lastModified() }.orEmpty()
 }
