@@ -4,6 +4,7 @@ import io.github.abrahampaulj.pocketfuse.api.Capabilities
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 enum class FaceScope { MainPerson, Everyone }
@@ -57,4 +58,17 @@ data class SwapOptions(
             if (value is JsonArray) value.all { it in choices } else value in choices
         },
     )
+}
+
+/**
+ * [state] plus the server default for every option in [applied] (what the session was given earlier) that
+ * [state] leaves out. A job reads any option it does not name from the session, so a value a preview, the
+ * Lab or the puppet left there would otherwise carry over into the job unseen. Options whose default is
+ * null are left alone: the server would refuse a null.
+ */
+fun resetLeftovers(state: Map<String, JsonElement>, applied: Map<String, JsonElement>, capabilities: Capabilities): Map<String, JsonElement> {
+    val defaults = applied.keys.filter { it !in state }.mapNotNull { key ->
+        capabilities[key]?.default?.takeIf { it != JsonNull }?.let { key to it }
+    }
+    return defaults.toMap() + state
 }

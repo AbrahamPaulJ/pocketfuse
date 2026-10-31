@@ -90,6 +90,10 @@ class Connection(private val context: Context, val config: ServerConfig, scope: 
         appliedState = appliedState + changed
     }
 
+    /** [values] plus the server default for every option this session has that [values] leaves out; see [resetLeftovers]. */
+    fun withDefaults(values: Map<String, JsonElement>): Map<String, JsonElement> =
+        _capabilities.value?.let { resetLeftovers(values, appliedState, it) } ?: values
+
     /**
      * The face the PC finds in a source photo, as a JPEG crop, or [FaceCheck.NoFace]: a source without
      * a detectable face makes every job fail, so the app checks before the user waits for one.

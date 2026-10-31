@@ -2,6 +2,7 @@ package io.github.abrahampaulj.pocketfuse.api
 
 import io.github.abrahampaulj.pocketfuse.core.FaceScope
 import io.github.abrahampaulj.pocketfuse.core.SwapOptions
+import io.github.abrahampaulj.pocketfuse.core.resetLeftovers
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -92,5 +93,20 @@ class ApiModelsTest {
             .with("face_swapper_model_from_the_future", JsonPrimitive("x"))
             .with("face_enhancer_blend", JsonPrimitive(250))
         assertEquals(setOf("face_swapper_model"), options.validFor(capabilities).overrides.keys)
+    }
+
+    @Test
+    fun aJobResetsWhatTheLabLeftOnTheSession() {
+        val applied = mapOf(
+            "face_swapper_pixel_boost" to JsonPrimitive("1024x1024"),
+            "face_swapper_model" to JsonPrimitive("ghost_2_256"),
+            "face_selector_age_start" to JsonPrimitive(30),
+        )
+        val state = SwapOptions().with("face_swapper_model", JsonPrimitive("ghost_1_256")).toState(forStream = false)
+        val job = resetLeftovers(state, applied, capabilities)
+        assertEquals(JsonPrimitive("256x256"), job["face_swapper_pixel_boost"])
+        assertEquals(JsonPrimitive("ghost_1_256"), job["face_swapper_model"])
+        assertFalse("a null default is never sent", "face_selector_age_start" in job)
+        assertEquals(state["processors"], job["processors"])
     }
 }
