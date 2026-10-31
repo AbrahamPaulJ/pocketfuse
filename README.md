@@ -9,7 +9,8 @@ over your Wi-Fi or your tailnet.
 Built for the [FaceFusion v4 Challenge](https://github.com/facefusion/facefusion/tree/v4-challenge).
 Runs against the unmodified `v4-challenge` branch, and is tested against the `v4` branch as well.
 
-> Demo video: `demo.mp4` (coming). Every manipulated frame in the app and the demo carries a visible
+> **Demo video: [demo.mp4](demo.mp4)** (3.5 minutes, recorded from a real phone against a real
+> FaceFusion server). Every face in it is AI generated, and every manipulated frame carries a visible
 > **AI GENERATED** label.
 
 
