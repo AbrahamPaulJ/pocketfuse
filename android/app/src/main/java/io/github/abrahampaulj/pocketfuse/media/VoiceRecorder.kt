@@ -2,6 +2,7 @@ package io.github.abrahampaulj.pocketfuse.media
 
 import android.content.Context
 import android.media.MediaRecorder
+import android.os.Build
 import java.io.File
 
 /**
@@ -15,19 +16,27 @@ class VoiceRecorder(private val context: Context) {
 
     val isRecording: Boolean get() = recorder != null
 
-    fun start(): File {
+    /** Starts recording, or returns null when the microphone cannot be opened (busy in a call, say). */
+    fun start(): File? {
         stop()
         val output = File(context.cacheDir, "voice/voice-${System.currentTimeMillis()}.m4a").apply { parentFile?.mkdirs() }
-        recorder = MediaRecorder(context).apply {
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setAudioSamplingRate(44_100)
-            setAudioEncodingBitRate(128_000)
-            setOutputFile(output.absolutePath)
-            prepare()
-            start()
+        val created = newRecorder()
+        val started = runCatching {
+            created.setAudioSource(MediaRecorder.AudioSource.MIC)
+            created.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            created.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            created.setAudioSamplingRate(44_100)
+            created.setAudioEncodingBitRate(128_000)
+            created.setOutputFile(output.absolutePath)
+            created.prepare()
+            created.start()
+        }.isSuccess
+        if (!started) {
+            created.release()
+            output.delete()
+            return null
         }
+        recorder = created
         file = output
         startedAt = System.currentTimeMillis()
         return output
@@ -42,6 +51,11 @@ class VoiceRecorder(private val context: Context) {
         val output = file
         return if (stopped && output != null && System.currentTimeMillis() - startedAt >= MIN_MS) output else null.also { output?.delete() }
     }
+
+    /** MediaRecorder(Context) arrived in Android 12; Android 10 and 11 only have the old constructor. */
+    @Suppress("DEPRECATION")
+    private fun newRecorder(): MediaRecorder =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else MediaRecorder()
 
     private companion object {
         const val MIN_MS = 700L

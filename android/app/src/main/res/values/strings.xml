@@ -146,6 +146,7 @@
     <string name="voice_recording">Recording</string>
     <string name="voice_use">Lip sync</string>
     <string name="voice_ready">%1$.1f s recorded</string>
+    <string name="voice_mic_busy">The microphone is in use (a call or another app). Try again once it is free.</string>
     <string name="connection_ok">Connected</string>
     <string name="connection_opening">Connecting</string>
     <string name="connection_lost">Offline</string>
