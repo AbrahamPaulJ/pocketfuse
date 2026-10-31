@@ -21,8 +21,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Pocketfuse">
 
+        <!-- Compose lays itself out again on these changes; recreating the activity would end a running Live stream or Puppet -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">

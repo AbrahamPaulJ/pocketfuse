@@ -82,7 +82,8 @@ The key is stored encrypted with the Android Keystore. **Forget this server** on
    after; the slider above picks which second of a video to preview.
 4. **Options**: *Enhance face* sharpens the swapped face, *Keep expression* keeps the target's
    expression, *Main person* or *Everyone*, and the swap model. **All options** lists every setting your
-   FaceFusion offers, read live from the server. **Presets** saves the current options under a name.
+   FaceFusion offers for the processors Pocketfuse runs, read live from the server. **Presets** saves the
+   current options under a name.
 5. **Swap on my PC**. You can lock the phone: the swap runs in the background with a notification, and
    the notification opens the result.
 6. **Results** (the gallery icon, top right): play, **Save** to your gallery, **Share**, or **Delete**.

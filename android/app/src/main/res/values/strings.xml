@@ -67,7 +67,7 @@
     <string name="swap_open_result">Open result</string>
 
     <string name="options_loading">Loading the server\'s options</string>
-    <string name="options_intro">Every option your FaceFusion server offers, read from the server itself. Changed options are highlighted and used by every swap, preview and live stream.</string>
+    <string name="options_intro">Every option your FaceFusion server offers for the processors this app runs, read from the server itself. Changed options are highlighted and used by every swap, preview and live stream.</string>
     <string name="options_reset">Reset %1$d changed options</string>
     <string name="options_default">Default</string>
     <string name="options_apply">Apply</string>
