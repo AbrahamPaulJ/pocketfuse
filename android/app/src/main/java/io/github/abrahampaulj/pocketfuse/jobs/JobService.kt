@@ -16,6 +16,7 @@ import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.SwapProgress
 import io.github.abrahampaulj.pocketfuse.core.SwapRequest
 import io.github.abrahampaulj.pocketfuse.core.SwapRunner
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,7 +29,15 @@ import kotlinx.coroutines.launch
  * the result arrives as a second notification that opens the app on it.
  */
 class JobService : Service() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    // SwapRunner turns every known failure into a message; anything else ends the swap, never the app.
+    private val unexpected = CoroutineExceptionHandler { _, _ ->
+        val failed = SwapProgress.Failed(getString(R.string.error_job_unexpected), retryable = false)
+        app.jobs.report(failed)
+        finished(failed)
+        ServiceCompat.stopForeground(this@JobService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + unexpected)
     private val app get() = application as PocketfuseApp
 
     override fun onBind(intent: Intent?): IBinder? = null

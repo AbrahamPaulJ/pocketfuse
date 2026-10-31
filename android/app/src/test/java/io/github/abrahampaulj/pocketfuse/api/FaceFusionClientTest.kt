@@ -10,6 +10,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,12 +18,18 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class FaceFusionClientTest {
+    @get:Rule
+    val temp = TemporaryFolder()
+
     private lateinit var server: MockWebServer
     private lateinit var client: FaceFusionClient
 
@@ -119,6 +126,32 @@ class FaceFusionClientTest {
         assertEquals("/assets?type=target", upload.path)
         val body = upload.body.readUtf8()
         assertTrue("name=\"file\"; filename=\"face.jpg\"" in body)
+    }
+
+    @Test
+    fun aDownloadCutShortLeavesNoFileBehind() = runBlocking {
+        server.enqueue(json(tokens, 201))
+        server.enqueue(MockResponse().setBody("x".repeat(64 * 1024)).setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+        client.openSession(null)
+        val into = File(temp.root, "job.mp4")
+        try {
+            client.download("a1", into)
+            fail("a cut download did not throw")
+        } catch (_: UnreachableException) {
+        }
+        assertFalse("truncated result kept", into.exists())
+        assertFalse("partial file kept", File(into.path + FaceFusionClient.PARTIAL_SUFFIX).exists())
+    }
+
+    @Test
+    fun aCompleteDownloadLandsUnderItsFinalName() = runBlocking {
+        server.enqueue(json(tokens, 201))
+        server.enqueue(MockResponse().setBody("video bytes"))
+        client.openSession(null)
+        val into = File(temp.root, "outputs/job.mp4")
+        client.download("a1", into)
+        assertEquals("video bytes", into.readText())
+        assertFalse(File(into.path + FaceFusionClient.PARTIAL_SUFFIX).exists())
     }
 
     @Test

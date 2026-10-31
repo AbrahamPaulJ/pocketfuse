@@ -161,15 +161,20 @@ class FaceFusionClient(
         }
     }
 
+    /**
+     * Saves the asset to [into]. The bytes go to a `.part` file renamed only once complete, so a dropped
+     * connection never leaves a truncated result behind; it ends as [UnreachableException].
+     */
     suspend fun download(assetId: String, into: File, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
         val url = url("/assets/$assetId") { addQueryParameter("action", "download") }
+        val partial = File(into.path + PARTIAL_SUFFIX)
         execute(Request.Builder().url(url).get().build(), Operation.Download, longRunning = true, streamBody = true).use { response ->
             val body = response.body!!
             val total = body.contentLength()
-            run {
+            try {
                 into.parentFile?.mkdirs()
                 body.byteStream().use { input ->
-                    into.outputStream().use { output ->
+                    partial.outputStream().use { output ->
                         val buffer = ByteArray(64 * 1024)
                         var copied = 0L
                         while (true) {
@@ -181,7 +186,14 @@ class FaceFusionClient(
                         }
                     }
                 }
+            } catch (exception: IOException) {
+                partial.delete()
+                throw UnreachableException(host, exception)
             }
+        }
+        if (!partial.renameTo(into)) {
+            partial.delete()
+            throw IOException("Could not save the result")
         }
         into
     }
@@ -289,6 +301,8 @@ class FaceFusionClient(
         const val MAX_UPLOAD_FILES = 32
         const val MAX_UPLOAD_BYTES = 512L * 1024 * 1024
         const val MAX_RESOLUTION = 4096
+        /** Marks a download still in progress; never listed as a result. */
+        const val PARTIAL_SUFFIX = ".part"
         val JSON: MediaType = "application/json".toMediaType()
         val SDP: MediaType = "application/sdp".toMediaType()
         val json = Json { ignoreUnknownKeys = true }

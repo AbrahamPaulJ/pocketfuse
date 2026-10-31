@@ -9,6 +9,7 @@ import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.JsonElement
+import java.io.IOException
 
 sealed interface FrameResult {
     data class Ready(val jpeg: ByteArray, val millis: Long) : FrameResult
@@ -59,5 +60,9 @@ class StreamPreview(context: Context, private val connection: Connection, privat
         FrameResult.Failed(exception.userMessage)
     } catch (exception: TimeoutCancellationException) {
         FrameResult.Failed("The server took too long to answer. It may still be loading models: try again in a moment.")
+    } catch (exception: IOException) {
+        FrameResult.Failed(phoneFileMessage(exception))
+    } catch (exception: SecurityException) {
+        FrameResult.Failed(phoneFileMessage(exception))
     }
 }

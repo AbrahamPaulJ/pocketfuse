@@ -8,6 +8,16 @@ import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import kotlinx.coroutines.delay
 import java.io.File
+import java.io.IOException
+
+/**
+ * What the user is told when the phone itself fails, not the server: a picked file that was moved,
+ * deleted or offloaded, a read grant that is gone, or storage that ran out.
+ */
+fun phoneFileMessage(exception: Exception): String = when (exception) {
+    is SecurityException -> "Pocketfuse is no longer allowed to read that file. Pick it again."
+    else -> "Pocketfuse could not read or save a file on the phone. Pick the photo or video again, and check the phone has free space."
+}
 
 sealed interface SwapProgress {
     data class Uploading(val what: String, val fraction: Float) : SwapProgress
@@ -33,6 +43,10 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
             SwapProgress.Failed(exception.userMessage, retryable = exception.status == 409 || exception.sessionLost)
         } catch (exception: UnreachableException) {
             SwapProgress.Failed(exception.userMessage, retryable = true)
+        } catch (exception: IOException) {
+            SwapProgress.Failed(phoneFileMessage(exception), retryable = false)
+        } catch (exception: SecurityException) {
+            SwapProgress.Failed(phoneFileMessage(exception), retryable = false)
         }
         onProgress(result)
         return result
