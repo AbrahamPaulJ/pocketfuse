@@ -31,6 +31,10 @@ The CLI is great at a desk. Most of the time you are not at the desk.
 - **Share to swap.** Share a video from your gallery, a chat or any app to Pocketfuse, pick a face,
   tap Swap. Upload, job, progress and download run in a foreground service with notifications, so you
   can lock the phone and come back to the result.
+- **Several at once.** Select a handful of videos in your gallery and share them together: each becomes
+  its own job on the PC, one after another, and a failed one does not stop the rest.
+- **Presets.** Save the options that work for you under a name ("Fast preview", "Final quality") and
+  apply them in one tap.
 - **Live.** Your phone camera goes to the PC over WebRTC, every frame is swapped on the GPU and
   streamed back. A phone you already carry becomes the camera. Video goes only over WebRTC, as the
   developer guide asks; the `/stream` WebSocket carries single images (preview, Lab, Puppet).
@@ -43,7 +47,8 @@ The CLI is great at a desk. Most of the time you are not at the desk.
   14 numbers drive FaceFusion's `face_editor` on a portrait, frame after frame. Your camera image never
   leaves the phone; only the numbers and the portrait do.
 - **PC at a glance.** GPU load, VRAM, temperature, CPU, memory and disk from `/metrics`, the session,
-  and the jobs the server holds.
+  and the jobs the server holds. **Benchmark** times your own swap on your own GPU (5.0 frames a second
+  for a 720 px frame on an RTX 3050 Laptop) and shares the number.
 
 
 API coverage
