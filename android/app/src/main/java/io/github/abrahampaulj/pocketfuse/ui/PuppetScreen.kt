@@ -59,6 +59,7 @@ import io.github.abrahampaulj.pocketfuse.puppet.EditorPose
 import io.github.abrahampaulj.pocketfuse.puppet.FaceTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.JsonArray
@@ -122,6 +123,7 @@ fun PuppetScreen(app: PocketfuseApp, connection: Connection) {
         }
         status = null
         var sent: EditorPose? = EditorPose()
+        var fresh = false
         var frames = 0
         var windowStart = System.currentTimeMillis()
         while (isActive && running) {
@@ -130,13 +132,23 @@ fun PuppetScreen(app: PocketfuseApp, connection: Connection) {
                 delay(50)
                 continue
             }
+            val changes = pose.changedSince(sent)
+            if (changes.isEmpty() && fresh) {
+                // The frame on screen already shows this pose (still face, face lost, app in the background):
+                // wait for the next real change instead of asking the PC to render the same frame again.
+                val shown = sent
+                tracker.pose.first { it != null && it.changedSince(shown).isNotEmpty() }
+                frames = 0
+                windowStart = System.currentTimeMillis()
+                continue
+            }
             try {
-                val changes = pose.changedSince(sent)
                 if (changes.isNotEmpty()) {
                     connection.applyState(changes)
                     sent = pose
                 }
                 output = connection.frames.process(frame)
+                fresh = true
             } catch (exception: ApiException) {
                 status = exception.userMessage
                 running = false

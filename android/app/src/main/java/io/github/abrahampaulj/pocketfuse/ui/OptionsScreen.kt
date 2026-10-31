@@ -29,6 +29,7 @@ import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.api.Argument
 import io.github.abrahampaulj.pocketfuse.api.Capabilities
 import io.github.abrahampaulj.pocketfuse.api.asText
+import io.github.abrahampaulj.pocketfuse.core.SwapOptions
 import io.github.abrahampaulj.pocketfuse.core.Workspace
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -47,7 +48,12 @@ fun OptionsScreen(capabilities: Capabilities?, workspace: Workspace) {
         return
     }
     val sections = remember(capabilities) {
-        capabilities.arguments.values.filter { it.section !in HIDDEN_SECTIONS && it.key !in HIDDEN_KEYS }.groupBy { it.section }
+        // Each processor's options sit in a section named after it; those of a processor the app never turns on change nothing.
+        val processors = capabilities.choicesOf("processors")
+        capabilities.arguments.values
+            .filter { it.section !in HIDDEN_SECTIONS && it.key !in HIDDEN_KEYS }
+            .filter { it.section !in processors || it.section in REACHABLE_PROCESSORS }
+            .groupBy { it.section }
     }
     LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -147,3 +153,6 @@ private fun parseFree(text: String, argument: Argument): JsonElement? {
 /** Set by the swap screen itself, or meaningless from a phone (paths are the session's own). */
 private val HIDDEN_SECTIONS = setOf("processors")
 private val HIDDEN_KEYS = setOf("face_selector_mode", "processors")
+
+/** Every processor [SwapOptions.processors] can return, with all of its switches on. */
+private val REACHABLE_PROCESSORS = SwapOptions(enhance = true, restoreExpression = true, lipSync = true).processors(hasFaces = true, hasVoice = true)
