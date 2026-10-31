@@ -123,7 +123,7 @@ private fun Connected(app: PocketfuseApp, connection: Connection, session: Sessi
                     Tab.Live -> LiveScreen(app, connection, onGoToSwap = { tab = Tab.Swap })
                     Tab.Lab -> LabScreen(app, connection, onGoToSwap = { tab = Tab.Swap })
                     Tab.Puppet -> PuppetScreen(app, connection)
-                    Tab.Server -> ServerScreen(connection, onForget = app::unpair)
+                    Tab.Server -> ServerScreen(connection, onForget = app::unpair, workspace = app.workspace)
                 }
             }
         }

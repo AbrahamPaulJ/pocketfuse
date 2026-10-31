@@ -67,7 +67,8 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
             when (job.status) {
                 JobStatus.Completed -> break
                 JobStatus.Failed -> return SwapProgress.Failed(
-                    "The server could not finish this swap. Its console says why; a common cause is no face found in the target.",
+                    "Your PC could not finish this swap. The two usual reasons: no face was found in the target, or " +
+                        "FaceFusion's content check flagged it (Pocketfuse never bypasses that check). The PC's console says which.",
                     retryable = true,
                 )
                 else -> onProgress(SwapProgress.Processing(((System.currentTimeMillis() - started) / 1000).toInt()))

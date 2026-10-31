@@ -30,6 +30,7 @@ import io.github.abrahampaulj.pocketfuse.api.ApiException
 import io.github.abrahampaulj.pocketfuse.api.SessionInfo
 import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.core.Connection
+import io.github.abrahampaulj.pocketfuse.core.Workspace
 import io.github.abrahampaulj.pocketfuse.pair.AddressKind
 import io.github.abrahampaulj.pocketfuse.pair.classify
 import kotlinx.coroutines.delay
@@ -39,7 +40,7 @@ private val JOB_STATUSES = listOf("drafted", "queued", "completed", "failed")
 
 /** The PC at a glance: live load from /metrics, the session, the jobs the server holds, and security. */
 @Composable
-fun ServerScreen(connection: Connection, onForget: () -> Unit) {
+fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Workspace? = null) {
     val scope = rememberCoroutineScope()
     val session by connection.session.collectAsState()
     val latest by connection.metrics.latest.collectAsState()
@@ -87,6 +88,8 @@ fun ServerScreen(connection: Connection, onForget: () -> Unit) {
                 it.diskFree?.let { free -> Hint(stringResource(R.string.server_disk_free, free.toString())) }
             }
         }
+
+        workspace?.let { BenchmarkCard(connection, it) }
 
         Section(stringResource(R.string.server_session)) {
             val state = session

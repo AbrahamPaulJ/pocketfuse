@@ -180,4 +180,12 @@
     <string name="presets_delete">Delete preset %1$s</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="bench_title">Benchmark</string>
+    <string name="bench_intro">Runs one frame of your target through your PC %1$d times with your current options and times each pass, network included.</string>
+    <string name="bench_need_inputs">Pick a face and a target on the Swap tab first.</string>
+    <string name="bench_run">Run benchmark</string>
+    <string name="bench_running">Measuring</string>
+    <string name="bench_fps">%1$.1f frames a second</string>
+    <string name="bench_detail">Median %1$d ms over %2$d frames, %3$d px, %4$s on %5$s.</string>
+    <string name="bench_share_text">Pocketfuse benchmark: %1$.1f frames a second (median %2$d ms, %3$d px frame, %4$s) on %5$s with FaceFusion v4.</string>
 </resources>
