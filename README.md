@@ -13,6 +13,15 @@ Runs against the unmodified `v4-challenge` branch, and is tested against the `v4
 > **AI GENERATED** label.
 
 
+| Preview, before and after | Several targets at once | Lab: one setting, side by side | Your PC, measured |
+|---|---|---|---|
+| <img src="docs/screens/preview.jpg" width="200"> | <img src="docs/screens/batch.jpg" width="200"> | <img src="docs/screens/lab.jpg" width="200"> | <img src="docs/screens/benchmark.jpg" width="200"> |
+| **Result, labelled** | **Every option the server offers** | **Pairing** | **Live** |
+| <img src="docs/screens/result.jpg" width="200"> | <img src="docs/screens/options.jpg" width="200"> | <img src="docs/screens/pair.jpg" width="200"> | <img src="docs/screens/live.jpg" width="200"> |
+
+All faces in these screenshots and in the demo are AI generated (StyleGAN); none is a real person.
+
+
 Why a phone
 -----------
 
