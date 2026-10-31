@@ -14,7 +14,7 @@ URL and a file holding the API key.
 | 4 | Pixel boost choices follow the launch model, not the session's model | reproduces | reproduces |
 | 5 | `/stream` under the default `face_selector_mode = reference` processes nothing | reproduces | fixed (reference maps) |
 | 6 | `DELETE /session` after a video `capture` on Windows | `404`, session stays alive | fixed (`206`, session closed); the files stay on disk |
-| 7 | A refresh token cannot renew an expired session: refresh only works before the expiry | reproduces | reproduces |
+| 7 | An expired session is deleted within a second, so the guard answers `401` instead of `426` and the refresh token dies with it | reproduces | reproduces |
 | 8 | Docs: `--video-memory-strategy strict` makes API jobs about 3x slower | | |
 
 
@@ -93,13 +93,17 @@ Suggested: validate the boost against the session's current model and list choic
 - **6, fixed on `v4`.** A `capture` on a video keeps an ffmpeg reader open; Windows cannot delete the
   file, and `v4-challenge` returned `404` before clearing the session, so its tokens stayed valid. `v4`
   answers `206` and closes the session; the files still stay in the temp folder until restart.
-- **7. A refresh token cannot renew an expired session.** Both tokens share the session's `expires_at`,
-  and `refresh_session` only accepts a refresh token while `validate_api_session` passes. Measured with
-  [`tools/beta/refresh_after_expiry.py`](../tools/beta/refresh_after_expiry.py) on both branches: after the
-  expiry (310 s on `v4`, 610 s on `v4-challenge`) the request answers `401 invalid access token` and
-  `PUT /session` with the refresh token answers `401 something went wrong`. So "request declined, refresh,
-  resend" does not work; only refreshing before the expiry does, which Pocketfuse does every 3 minutes.
-  If declined-then-refresh is the intended flow, the refresh token needs its own, longer expiry.
-  (Earlier in the challenge an expired token also answered `426 Upgrade Required`; the guide lists only `401`.)
+- **7. An expired session is deleted within a second, so `426` and refresh never happen.** The session
+  guard is meant to answer `426 Upgrade Required` for a known but expired access token, the signal to
+  refresh and resend. But `observe_api_session` starts a thread that polls `validate_api_session` and
+  calls `clear_api_session` as soon as it fails (1 s poll on `v4-challenge`, 0.5 s on `v4`). After that,
+  `find_api_session_id` no longer knows the token and the guard answers `401`. Even inside that window,
+  `refresh_session` also requires `validate_api_session` to pass, and both tokens share one `expires_at`.
+  Measured with [`tools/beta/refresh_after_expiry.py`](../tools/beta/refresh_after_expiry.py) on both
+  branches: after the expiry (310 s on `v4`, 610 s on `v4-challenge`) the request answers
+  `401 invalid access token`, and `PUT /session` with the refresh token answers `401 something went wrong`.
+  Henry confirmed it is a bug (the session is killed too early). The fix is likely to keep an expired
+  session, and to accept its refresh token, for a grace period. Until then, Pocketfuse refreshes before
+  the expiry, every 3 minutes.
 - **8.** The same 49 frame job: `strict` 30 s, `moderate` 9 s (models unload between frames under
   `strict`). For a long running API server `moderate` may be the better default, or worth a line in the guide.
