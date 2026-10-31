@@ -3,6 +3,7 @@ import time
 from typing import Callable, List, Optional, Tuple
 
 import httpx
+from websockets.exceptions import WebSocketException
 from websockets.sync.client import connect
 
 from pocketfuse.types import ApiKey, ApiSession, ProbeReport, ProbeResult, ProbeStatus, Url
@@ -16,7 +17,7 @@ def create_probe_result(name : str, check : ProbeCheck) -> ProbeResult:
 
 	try:
 		status, detail = check()
-	except (httpx.HTTPError, OSError, ValueError, KeyError, TypeError) as exception:
+	except (httpx.HTTPError, WebSocketException, OSError, ValueError, KeyError, TypeError) as exception:
 		status, detail = 'failed', type(exception).__name__ + ': ' + str(exception)
 
 	return\

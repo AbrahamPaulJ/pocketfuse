@@ -2,6 +2,7 @@ import os
 
 import httpx
 import pytest
+from websockets.exceptions import InvalidMessage
 
 from pocketfuse.prober import create_probe_result, expect_status, format_probe_report, run_probe, to_websocket_url
 
@@ -19,6 +20,11 @@ def test_create_probe_result() -> None:
 
 	assert probe_result.get('status') == 'failed'
 	assert probe_result.get('detail') == 'ConnectError: refused'
+
+	def refused_stream() -> None:
+		raise InvalidMessage('refused')
+
+	assert create_probe_result('stream', refused_stream).get('status') == 'failed' #type:ignore[arg-type]
 
 
 def test_to_websocket_url() -> None:

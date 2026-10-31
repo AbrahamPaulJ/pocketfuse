@@ -41,6 +41,12 @@ def resolve_host(api_host : Optional[Host]) -> Optional[Host]:
 	return host
 
 
+def resolve_pairing_host(host : Host) -> Host:
+	if host == '0.0.0.0':
+		return network_helper.suggest_host(network_helper.detect_addresses()) or host
+	return host
+
+
 def resolve_light_cell() -> str:
 	try:
 		'█'.encode(sys.stdout.encoding or 'ascii')
@@ -75,6 +81,10 @@ def serve(args : Namespace, server_args : List[str]) -> int:
 
 	api_key = os.getenv('FACEFUSION_API_KEY')
 
+	if args.no_api_key and not api_key:
+		print(translator.get('api_key_required'))
+		return 1
+
 	if api_key:
 		print(translator.get('api_key_reused'))
 	else:
@@ -91,7 +101,7 @@ def serve(args : Namespace, server_args : List[str]) -> int:
 		return 1
 
 	print(translator.get('server_ready', host = host, port = args.api_port))
-	print_pairing(host, args.api_port, api_key, args.no_api_key)
+	print_pairing(resolve_pairing_host(host), args.api_port, api_key, args.no_api_key)
 
 	try:
 		return process.wait()

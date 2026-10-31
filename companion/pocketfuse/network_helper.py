@@ -29,7 +29,9 @@ def detect_addresses() -> List[Address]:
 	except socket.gaierror:
 		pass
 
-	for host in sorted(hosts):
+	route_host = detect_route_host()
+
+	for host in sorted(hosts, key = lambda host : (host != route_host, host)):
 		addresses.append(
 		{
 			'host': host,
@@ -37,6 +39,15 @@ def detect_addresses() -> List[Address]:
 		})
 
 	return addresses
+
+
+def detect_route_host() -> Optional[Host]:
+	try:
+		with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as route_socket:
+			route_socket.connect(('10.255.255.255', 1))
+			return str(route_socket.getsockname()[0])
+	except OSError:
+		return None
 
 
 def suggest_host(addresses : List[Address]) -> Optional[Host]:

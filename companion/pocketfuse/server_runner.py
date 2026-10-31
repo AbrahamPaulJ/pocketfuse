@@ -48,7 +48,7 @@ def apply_default_args(server_args : List[str]) -> List[str]:
 	__server_args__ = list(server_args)
 
 	for argument_name, argument_value in DEFAULT_SERVER_ARGS.items():
-		if argument_name not in __server_args__:
+		if not any(server_arg == argument_name or server_arg.startswith(argument_name + '=') for server_arg in __server_args__):
 			__server_args__.extend([ argument_name, argument_value ])
 
 	return __server_args__

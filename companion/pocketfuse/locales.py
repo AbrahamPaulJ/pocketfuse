@@ -21,6 +21,7 @@ LOCALES : Locales =\
 		'address_public': 'refusing a public address, the FaceFusion API speaks plain HTTP and must stay on your LAN or tailnet',
 		'api_key_generated': 'generated a new API key for this run, it lives only in this process and the pairing code',
 		'api_key_reused': 'using FACEFUSION_API_KEY from the environment, paired phones stay paired',
+		'api_key_required': 'set FACEFUSION_API_KEY to use --no-api-key, the phone needs a key to type',
 		'api_key_missing': 'no API key, anyone who reaches this port can open a session',
 		'server_starting': 'starting the FaceFusion API on {host}:{port}',
 		'server_ready': 'FaceFusion API is ready on {host}:{port}',
