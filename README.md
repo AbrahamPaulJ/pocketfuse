@@ -22,8 +22,8 @@ The CLI is great at a desk. Most of the time you are not at the desk.
   tap Swap. Upload, job, progress and download run in a foreground service with notifications, so you
   can lock the phone and come back to the result.
 - **Live.** Your phone camera goes to the PC over WebRTC, every frame is swapped on the GPU and
-  streamed back. A phone you already carry becomes the camera. If WebRTC cannot deliver (UDP blocked,
-  or the `v4` branch issue below), Live carries on over the `/stream` WebSocket by itself.
+  streamed back. A phone you already carry becomes the camera. Video goes only over WebRTC, as the
+  developer guide asks; the `/stream` WebSocket carries single images (preview, Lab, Puppet).
 - **Lab.** Compare one setting side by side on a frame of your target: every swap model, pixel boost,
   weight or enhancer, one tile each, back in seconds. The CLI can try one setting per run. Tap the
   winner and it becomes the setting for your swaps.
@@ -118,8 +118,8 @@ Found while building, each written up for the FaceFusion team:
   one-image warm-up job, then remembers it.
 - **WebRTC without STUN.** The offer is sent only after ICE gathering completes, transceivers are added
   in the order the server expects, and VP8 is offered first (no AV1) so every phone decodes in hardware.
-- **The `v4` branch.** Its WebRTC peer stops before the track opens, so no frame is ever processed;
-  Live falls back to the WebSocket. Its `capture` needs a frame index even for photos and answers
+- **The `v4` branch.** At the time of testing its WebRTC peer stopped before the track opened, so no
+  frame was processed and Live shows a clear hint instead of hanging. Its `capture` needs a frame index even for photos and answers
   `multipart/mixed`; Pocketfuse sends one and reads both formats.
 
 
