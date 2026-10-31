@@ -61,7 +61,7 @@ API key, waits until it answers and prints a QR code. Leave the window open: clo
 3. Install the app and pair
 ---------------------------
 
-1. On the phone, download `pocketfuse-1.0.0.apk` from the
+1. On the phone, download the `.apk` file from the
    [latest release](https://github.com/AbrahamPaulJ/pocketfuse/releases/latest) and open it. Android
    asks to allow installs from your browser once.
 2. Open Pocketfuse and tap **Scan code**, then point it at the QR code in the PC window.
