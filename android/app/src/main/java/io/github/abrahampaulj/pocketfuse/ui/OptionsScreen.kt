@@ -36,9 +36,10 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Every option the server reports in GET /capabilities, grouped by section, with a control chosen from
- * the option's shape: a slider for an expanded numeric range, chips for a list, a menu for a choice,
- * a text field for free input. Nothing here is hard-coded, so a newer FaceFusion shows its new options.
+ * Every option the server reports in GET /capabilities, except those of processors this app never turns
+ * on, grouped by section, with a control chosen from the option's shape: a slider for an expanded numeric
+ * range, chips for a list, a menu for a choice, a text field for free input. Nothing here is hard-coded,
+ * so a newer FaceFusion shows its new options.
  */
 @Composable
 fun OptionsScreen(capabilities: Capabilities?, workspace: Workspace) {

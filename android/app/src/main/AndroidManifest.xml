@@ -21,7 +21,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Pocketfuse">
 
-        <!-- Compose relays out on these itself; recreating the activity would end a running Live stream or Puppet -->
+        <!-- Compose lays itself out again on these changes; recreating the activity would end a running Live stream or Puppet -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
