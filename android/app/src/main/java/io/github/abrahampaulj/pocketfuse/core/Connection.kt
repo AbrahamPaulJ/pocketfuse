@@ -55,7 +55,7 @@ class Connection(private val context: Context, val config: ServerConfig, scope: 
         val state = keeper.open()
         if (state is SessionState.Open) {
             if (_capabilities.value == null) _capabilities.value = runCatching { client.capabilities() }.getOrNull()
-            metrics.start()
+            metrics.start { keeper.state.value is SessionState.Open }
         }
         return state
     }
