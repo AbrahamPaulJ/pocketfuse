@@ -26,6 +26,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -89,6 +91,7 @@ import io.github.abrahampaulj.pocketfuse.media.VoiceRecorder
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> Unit, onOpenResults: () -> Unit) {
     val context = LocalContext.current
@@ -256,9 +259,10 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
         Section(stringResource(R.string.swap_options), trailing = {
             TextButton(onClick = onOpenOptions) { Text(stringResource(R.string.swap_all_options)) }
         }) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = options.enhance, onClick = { workspace.updateOptions { it.copy(enhance = !it.enhance) } }, label = { Text(stringResource(R.string.swap_enhance)) })
                 FilterChip(selected = options.restoreExpression, onClick = { workspace.updateOptions { it.copy(restoreExpression = !it.restoreExpression) } }, label = { Text(stringResource(R.string.swap_keep_expression)) })
+                FilterChip(selected = options.keepMouth, onClick = { workspace.updateOptions { it.copy(keepMouth = !it.keepMouth) } }, label = { Text(stringResource(R.string.swap_keep_mouth)) })
             }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 FaceScope.entries.forEachIndexed { index, scopeOption ->

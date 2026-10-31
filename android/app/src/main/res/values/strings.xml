@@ -59,6 +59,7 @@
     <string name="swap_all_options">All options</string>
     <string name="swap_enhance">Enhance face</string>
     <string name="swap_keep_expression">Keep expression</string>
+    <string name="swap_keep_mouth">Keep my mouth</string>
     <string name="swap_main_person">Main person</string>
     <string name="swap_everyone">Everyone</string>
     <string name="swap_model">Swap model</string>
