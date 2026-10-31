@@ -18,6 +18,7 @@ data class SwapOptions(
     val enhance: Boolean = false,
     val restoreExpression: Boolean = false,
     val lipSync: Boolean = false,
+    val keepMouth: Boolean = false,
     val faceScope: FaceScope = FaceScope.MainPerson,
     val overrides: Map<String, JsonElement> = emptyMap(),
 ) {
@@ -41,9 +42,25 @@ data class SwapOptions(
             FaceScope.Everyone -> "many"
             FaceScope.MainPerson -> if (forStream) "one" else "reference"
         }
-        return overrides + mapOf(
+        val masks = if (keepMouth) mouthMasks() else emptyMap()
+        val maskDefaults = if (forStream && !keepMouth) DEFAULT_MASKS else emptyMap()
+        return maskDefaults + overrides + masks + mapOf(
             "processors" to JsonArray(processors(hasFaces, hasVoice).map(::JsonPrimitive)),
             "face_selector_mode" to JsonPrimitive(selector),
+        )
+    }
+
+    /**
+     * The face parser region mask, minus the mouth and lips, on top of the mask types the user picked: the
+     * server keeps the swapped face only where every mask agrees, so the real mouth shows through. The job
+     * path drops these again through the leftover reset; the stream has none, so [toState] sends
+     * [DEFAULT_MASKS] for it while the toggle is off.
+     */
+    private fun mouthMasks(): Map<String, JsonElement> {
+        val picked = (overrides[FACE_MASK_TYPES] as? JsonArray)?.toList() ?: listOf(JsonPrimitive("box"))
+        return mapOf(
+            FACE_MASK_TYPES to JsonArray((picked + JsonPrimitive("region")).distinct()),
+            FACE_MASK_REGIONS to JsonArray(MOUTHLESS_REGIONS.map(::JsonPrimitive)),
         )
     }
 
@@ -59,6 +76,17 @@ data class SwapOptions(
         },
     )
 }
+
+private const val FACE_MASK_TYPES = "face_mask_types"
+private const val FACE_MASK_REGIONS = "face_mask_regions"
+
+/** facefusion.choices.face_mask_regions, the server's default for face_mask_regions. */
+private val FACE_MASK_REGION_CHOICES = listOf("skin", "left-eyebrow", "right-eyebrow", "left-eye", "right-eye", "glasses", "nose", "mouth", "upper-lip", "lower-lip")
+private val MOUTHLESS_REGIONS = FACE_MASK_REGION_CHOICES - setOf("mouth", "upper-lip", "lower-lip")
+private val DEFAULT_MASKS: Map<String, JsonElement> = mapOf(
+    FACE_MASK_TYPES to JsonArray(listOf(JsonPrimitive("box"))),
+    FACE_MASK_REGIONS to JsonArray(FACE_MASK_REGION_CHOICES.map(::JsonPrimitive)),
+)
 
 /**
  * [state] plus the server default for every option in [applied] (what the session was given earlier) that
