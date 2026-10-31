@@ -26,8 +26,8 @@ android {
         applicationId = "io.github.abrahampaulj.pocketfuse"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.1.0"
         // libwebrtc and MediaPipe ship native code per ABI; every phone this targets is arm64.
         ndk { abiFilters += "arm64-v8a" }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
