@@ -78,6 +78,8 @@
     <string name="results_saved">Saved to your gallery</string>
     <string name="results_save_failed">Could not save to the gallery</string>
     <string name="results_share">Share</string>
+    <string name="results_share_text">AI generated with FaceFusion</string>
+    <string name="results_share_failed">Could not add the AI label, so nothing was shared</string>
     <string name="results_delete">Delete</string>
 
     <string name="server_load">PC load</string>

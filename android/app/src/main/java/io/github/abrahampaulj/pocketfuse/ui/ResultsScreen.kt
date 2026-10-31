@@ -1,5 +1,6 @@
 package io.github.abrahampaulj.pocketfuse.ui
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.MediaController
@@ -39,6 +40,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.JobCenter
 import io.github.abrahampaulj.pocketfuse.media.Gallery
+import io.github.abrahampaulj.pocketfuse.media.MediaInspector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -72,7 +74,16 @@ fun ResultsScreen(jobs: JobCenter) {
                             Toast.makeText(context, if (saved != null) R.string.results_saved else R.string.results_save_failed, Toast.LENGTH_SHORT).show()
                         }
                     }) { Text(stringResource(R.string.results_save)) }
-                    OutlinedButton(onClick = { context.startActivity(Gallery.shareIntent(context, file)) }) { Text(stringResource(R.string.results_share)) }
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            val labelled = withContext(Dispatchers.IO) { runCatching { Gallery.labelled(file) }.getOrNull() }
+                            if (labelled != null) {
+                                context.startActivity(Gallery.shareIntent(context, labelled))
+                            } else {
+                                Toast.makeText(context, R.string.results_share_failed, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) { Text(stringResource(R.string.results_share)) }
                     TextButton(onClick = { jobs.delete(file) }) { Text(stringResource(R.string.results_delete)) }
                 }
             }
@@ -99,9 +110,14 @@ private fun VideoPlayer(file: File) {
     )
 }
 
+/** The result scaled to screen size, decoded off the main thread; the black box shows until it lands. */
 @Composable
 private fun ImageFile(file: File) {
-    val bitmap = remember(file) { BitmapFactory.decodeFile(file.absolutePath) }
+    val context = LocalContext.current
+    var bitmap by remember(file) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(file) {
+        bitmap = withContext(Dispatchers.IO) { runCatching { MediaInspector.decodeScaled(context, Uri.fromFile(file), 1440) }.getOrNull() }
+    }
     BitmapImage(bitmap, Modifier.fillMaxSize(), androidx.compose.ui.layout.ContentScale.Fit)
 }
 

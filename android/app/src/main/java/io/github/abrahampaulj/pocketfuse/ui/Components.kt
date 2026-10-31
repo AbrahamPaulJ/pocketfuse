@@ -109,11 +109,14 @@ fun StatusDot(color: Color, size: Dp = 8.dp) {
     Box(Modifier.size(size).clip(CircleShape).background(color))
 }
 
+/** The words of the AI label, on screen here and burned into saved and shared images by media/Gallery.kt. */
+const val AI_LABEL = "AI GENERATED"
+
 /** The visible label the challenge rules ask for on every manipulated frame. */
 @Composable
 fun AiLabel(modifier: Modifier = Modifier) {
     Text(
-        "AI GENERATED",
+        AI_LABEL,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
         color = Color.White,
