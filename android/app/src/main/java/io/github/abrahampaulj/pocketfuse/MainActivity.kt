@@ -9,6 +9,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.abrahampaulj.pocketfuse.pair.Pairing
@@ -26,7 +30,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         if (savedInstanceState == null) handle(intent)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-        setContent { PocketfuseTheme { AppRoot(app) } }
+        // The Surface sets the background and the default text colour for screens outside a Scaffold (pairing).
+        setContent { PocketfuseTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { AppRoot(app) } } }
     }
 
     override fun onNewIntent(intent: Intent) {
