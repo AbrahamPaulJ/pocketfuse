@@ -76,6 +76,8 @@ class JobCenter(private val context: Context) {
 
     fun delete(file: File) {
         file.delete()
+        // The labelled copy Gallery made for saving or sharing goes with its result.
+        File(file.parentFile, "labelled").listFiles()?.filter { it.nameWithoutExtension == file.nameWithoutExtension }?.forEach { it.delete() }
         _results.value = scanResults()
     }
 
