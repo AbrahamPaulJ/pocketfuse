@@ -20,6 +20,9 @@ URL and a file holding the API key.
 | 10 | Upload validation checks only the first file of a multi-file `POST /assets` | reproduces | same code |
 | 11 | An expired session's temp and jobs folders are never removed | reproduces | same code |
 | 12 | `DELETE /session` right after a video job races the output capture: a traceback in the log | reproduces | same code |
+| 13 | Static source images are hashed again on every stream frame: about 60 ms of a frame for one 12 MP source | reproduces | same code |
+| 14 | A failed job carries no reason: the client cannot tell no face, a content block and a missing model apart | reproduces | same code |
+| 15 | `deep_swapper_model` defaults to a real, named person | reproduces | same code |
 
 
 1. Concurrent content analysis in the WebRTC stream (CUDA)
@@ -134,3 +137,20 @@ Suggested: validate the boost against the session's current model and list choic
   session at once removes the temp folder while ffprobe reads the output, and `extract_video_metadata`
   raises `TypeError: float() argument must be ... not 'NoneType'` (`ffprobe.py`). Seen 8 times in our
   server log, once after every benchmark job that closed its session straight away.
+- **13. Source images are re-hashed on every frame.** `face_store.get_faces` keys its cache with
+  `create_hash(vision_frame.tobytes())`, a CRC32 over the whole frame. For `face_swapper` a stream or Live
+  frame looks each static source up 3 times (`pre_process`, `extract_source_face`, `select_faces`), and
+  every other processor once more. Measured with the server's own hash in the venv
+  (`python -I -c "zlib.crc32(frame.tobytes())"` over random frames, 10 runs): 18.8 ms at 4080x3060, 5.1 ms
+  at 2048x1536, 1.2 ms at 1024x768. One phone photo as the source therefore costs about 60 ms of a
+  175 to 250 ms frame. Pocketfuse now scales sources to 2048 px; keying static sources by asset or path
+  would fix it for every client.
+- **14. A failed job says only "failed".** [`tools/beta/failed_job_reason.py`](../tools/beta/failed_job_reason.py)
+  runs a swap with a source that has no face: `GET /jobs/{id}` answers `"status": "failed"` and nothing
+  else, while the server log says `no source face detected!`. No endpoint serves the reason, so a client
+  cannot tell a missing face, a content analyser block and a missing model apart. A short reason code on
+  the step would help clients without weakening the analyser.
+- **15. The deep swapper defaults to a real person.** Same script: `/capabilities` lists
+  `deep_swapper_model` with the default `iperov/elon_musk_224` and 157 choices, most of them named
+  celebrities. A client that renders choices generically puts a real person one tap away. A neutral
+  default, or a flag that marks real-person models, would make that safer.
