@@ -29,7 +29,7 @@ fun describe(status: Int, operation: Operation): String = when (status) {
     400 -> when (operation) {
         Operation.Upload -> "The server could not read that file. Images and videos must be at most 4096 pixels on each side."
         Operation.Capture -> "Could not take frames from that file."
-        Operation.State -> "The server refused one of the settings. They have been reset to what the server accepts."
+        Operation.State -> "The server refused one of the settings. Set it back to Default under All options."
         Operation.Jobs -> "The server could not start this job. Pick a source face and a target first."
         else -> "The server refused the request."
     }

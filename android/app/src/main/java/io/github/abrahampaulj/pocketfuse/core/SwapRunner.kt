@@ -53,7 +53,9 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
         val keeper = connection.keeper
         keeper.call { selectSources(sourceIds + voiceIds) }
         keeper.call { selectTarget(targetId) }
-        val state = options.toState(forStream = false, hasFaces = sourceIds.isNotEmpty(), hasVoice = voiceIds.isNotEmpty())
+        // What a preview, the Lab or the puppet left on the session goes back to the default, in the step too:
+        // a job takes any option its step leaves out from the session as it is when the job starts.
+        val state = connection.withDefaults(options.toState(forStream = false, hasFaces = sourceIds.isNotEmpty(), hasVoice = voiceIds.isNotEmpty()))
         connection.applyState(state)
 
         val jobId = keeper.call { createJob() }

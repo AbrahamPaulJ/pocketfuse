@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,8 @@ private fun Connected(app: PocketfuseApp, connection: Connection, session: Sessi
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     var overlay by rememberSaveable { mutableStateOf<Overlay?>(null) }
     val capabilities by connection.capabilities.collectAsState()
+    // Saved options this server would refuse with a 400 (another server, or an older app) are dropped once it answers.
+    LaunchedEffect(capabilities) { capabilities?.let { caps -> app.workspace.updateOptions { it.validFor(caps) } } }
     BackHandler(enabled = overlay != null) { overlay = null }
 
     Scaffold(

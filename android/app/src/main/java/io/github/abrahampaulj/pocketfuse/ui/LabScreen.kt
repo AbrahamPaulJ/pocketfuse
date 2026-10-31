@@ -46,8 +46,11 @@ import io.github.abrahampaulj.pocketfuse.core.FrameResult
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
 import io.github.abrahampaulj.pocketfuse.core.SwapOptions
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 
 /** One axis the lab can compare, and how to pick a handful of values from the server's choices. */
 enum class LabAxis(val key: String, val label: Int, val needsEnhancer: Boolean = false, val samples: Int = 8, val downloads: Boolean = false) {
@@ -65,7 +68,8 @@ enum class LabAxis(val key: String, val label: Int, val needsEnhancer: Boolean =
     }
 }
 
-private data class LabTile(val value: JsonElement, val result: FrameResult?)
+/** [key] is the option the tile was run for: the axis chip may have changed since. */
+private data class LabTile(val key: String, val value: JsonElement, val result: FrameResult?)
 
 /**
  * The settings lab: one frame of the target, run through the PC once per value of one option, shown side
@@ -88,10 +92,11 @@ fun LabScreen(app: PocketfuseApp, connection: Connection, onGoToSwap: () -> Unit
     fun run() {
         val caps = capabilities ?: return
         val media = target ?: return
+        val runAxis = axis
         running = true
         tiles.clear()
-        val values = axis.values(caps)
-        tiles.addAll(values.map { LabTile(it, null) })
+        val values = runAxis.values(caps)
+        tiles.addAll(values.map { LabTile(runAxis.key, it, null) })
         scope.launch {
             val frame = MediaInspector.frameJpeg(context, media, media.durationMs / 2, 512)
             if (frame == null) {
@@ -105,11 +110,17 @@ fun LabScreen(app: PocketfuseApp, connection: Connection, onGoToSwap: () -> Unit
                 running = false
                 return@launch
             }
-            val base: SwapOptions = if (axis.needsEnhancer) options.copy(enhance = true) else options
-            values.forEachIndexed { index, value ->
-                val state = base.with(axis.key, value).toState(forStream = true)
-                tiles[index] = LabTile(value, stream.process(frame, state))
-                status = null
+            val base: SwapOptions = if (runAxis.needsEnhancer) options.copy(enhance = true) else options
+            try {
+                values.forEachIndexed { index, value ->
+                    val state = base.with(runAxis.key, value).toState(forStream = true)
+                    tiles[index] = LabTile(runAxis.key, value, stream.process(frame, state))
+                    status = null
+                }
+            } finally {
+                // Each tile left its value on the session: put the user's own back for the next preview, Live or swap.
+                val own = app.workspace.options.value.overrides[runAxis.key] ?: caps[runAxis.key]?.default
+                if (own != null && own != JsonNull) withContext(NonCancellable) { stream.apply(mapOf(runAxis.key to own)) }
             }
             running = false
         }
@@ -135,17 +146,16 @@ fun LabScreen(app: PocketfuseApp, connection: Connection, onGoToSwap: () -> Unit
         }
         status?.let { Hint(it, color = Warn) }
 
-        val current = options.overrides[axis.key] ?: capabilities?.get(axis.key)?.default
         // Tiles take a wide target's shape (no letterbox); portrait targets get square tiles cropped to the centre.
         val tileAspect = target?.takeIf { it.width > 0 && it.height > 0 }?.let { (it.width.toFloat() / it.height).coerceIn(1f, 2f) } ?: 1f
         tiles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { tile ->
-                    val chosen = tile.value == current
+                    val chosen = tile.value == (options.overrides[tile.key] ?: capabilities?.get(tile.key)?.default)
                     Column(
                         Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .border(2.dp, if (chosen) Violet else Color.Transparent, RoundedCornerShape(16.dp))
-                            .clickable(enabled = tile.result is FrameResult.Ready) { app.workspace.updateOptions { it.with(axis.key, tile.value) } },
+                            .clickable(enabled = tile.result is FrameResult.Ready) { app.workspace.updateOptions { it.with(tile.key, tile.value) } },
                     ) {
                         Box(Modifier.fillMaxWidth().aspectRatio(tileAspect)) {
                             when (val result = tile.result) {
