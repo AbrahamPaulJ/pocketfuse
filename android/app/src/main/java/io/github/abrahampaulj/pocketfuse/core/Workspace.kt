@@ -59,10 +59,52 @@ class Workspace(private val context: Context) {
         prefs.edit().putStringSet("sources", _sources.value.map { it.uri.toString() }.toSet()).apply()
     }
 
-    suspend fun setTarget(uri: Uri): LocalMedia? = inspect(uri)?.also { _target.value = it }
+    private val _batch = MutableStateFlow<List<LocalMedia>>(emptyList())
+    /** Targets shared together; each becomes its own job. Empty unless more than one was shared. */
+    val batch: StateFlow<List<LocalMedia>> = _batch.asStateFlow()
+
+    suspend fun setTarget(uri: Uri): LocalMedia? = inspect(uri)?.also {
+        _target.value = it
+        _batch.value = emptyList()
+    }
+
+    /** Several shared files: the first becomes the target (for preview and Lab), all of them the batch. */
+    suspend fun setBatch(uris: List<Uri>): List<LocalMedia> {
+        val media = uris.take(MAX_BATCH).mapNotNull { inspect(it) }
+        _target.value = media.firstOrNull()
+        _batch.value = if (media.size > 1) media else emptyList()
+        return media
+    }
+
+    fun clearBatch() {
+        _batch.value = emptyList()
+    }
 
     fun clearTarget() {
         _target.value = null
+    }
+
+    private val _presets = MutableStateFlow(
+        prefs.getString("presets", null)?.let { runCatching { json.decodeFromString<Map<String, SwapOptions>>(it) }.getOrNull() } ?: emptyMap(),
+    )
+    /** Named sets of options the user saved, applied in one tap. */
+    val presets: StateFlow<Map<String, SwapOptions>> = _presets.asStateFlow()
+
+    fun savePreset(name: String) {
+        val key = name.trim().take(MAX_PRESET_NAME)
+        if (key.isEmpty()) return
+        storePresets(_presets.value + (key to _options.value))
+    }
+
+    fun applyPreset(name: String) {
+        _presets.value[name]?.let { preset -> updateOptions { preset } }
+    }
+
+    fun deletePreset(name: String) = storePresets(_presets.value - name)
+
+    private fun storePresets(presets: Map<String, SwapOptions>) {
+        _presets.value = presets
+        prefs.edit().putString("presets", json.encodeToString(presets)).apply()
     }
 
     fun updateOptions(transform: (SwapOptions) -> SwapOptions) {
@@ -77,5 +119,7 @@ class Workspace(private val context: Context) {
 
     private companion object {
         const val MAX_SOURCES = 8
+        const val MAX_BATCH = 50
+        const val MAX_PRESET_NAME = 24
     }
 }

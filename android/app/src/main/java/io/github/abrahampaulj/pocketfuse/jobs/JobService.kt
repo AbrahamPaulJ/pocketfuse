@@ -14,6 +14,7 @@ import io.github.abrahampaulj.pocketfuse.MainActivity
 import io.github.abrahampaulj.pocketfuse.PocketfuseApp
 import io.github.abrahampaulj.pocketfuse.R
 import io.github.abrahampaulj.pocketfuse.core.SwapProgress
+import io.github.abrahampaulj.pocketfuse.core.SwapRequest
 import io.github.abrahampaulj.pocketfuse.core.SwapRunner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,13 +46,20 @@ class JobService : Service() {
         }
         scope.launch {
             val runner = SwapRunner(connection, app.jobs.outputDirectory)
-            val result = runner.run(request.sources, request.target, request.options, request.voice) { progress ->
-                app.jobs.report(progress)
-                describe(progress)?.let { (text, fraction) ->
-                    getSystemService(NotificationManager::class.java).notify(NOTIFICATION_PROGRESS, progressNotification(text, fraction))
+            var next: SwapRequest? = request
+            while (next != null) {
+                val current = next
+                val result = runner.run(current.sources, current.target, current.options, current.voice) { progress ->
+                    app.jobs.report(progress)
+                    describe(progress)?.let { (text, fraction) ->
+                        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_PROGRESS, progressNotification(text, fraction))
+                    }
                 }
+                app.jobs.finishedOne()
+                next = app.jobs.takePending()
+                // In a batch the last result is what the user sees; one failed target does not stop the rest.
+                if (next == null) finished(result) else app.jobs.report(SwapProgress.Preparing)
             }
-            finished(result)
             ServiceCompat.stopForeground(this@JobService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }

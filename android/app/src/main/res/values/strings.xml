@@ -164,4 +164,20 @@
     <string name="puppet_pick_title">Bring a portrait to life</string>
     <string name="results_empty_title">No results yet</string>
     <string name="lab_downloads">Each model your PC has not used yet is downloaded first, up to 1.6 GB each. Check the PC has the space.</string>
+    <string name="shared_batch">%1$d files ready to swap</string>
+    <string name="batch_title">%1$d targets, one swap each</string>
+    <string name="batch_hint">Preview and Lab use the first one. Each target runs as its own job on your PC, one after another.</string>
+    <string name="batch_clear">Just the first</string>
+    <string name="swap_run_batch">Swap all %1$d on my PC</string>
+    <string name="batch_progress">Target %1$d of %2$d</string>
+    <string name="batch_stop_rest">Stop the rest</string>
+    <string name="batch_done">%1$d of %2$d swaps finished. The results are in Results.</string>
+    <string name="swap_not_ready">Add a face and a target to swap.</string>
+    <string name="presets_title">Presets</string>
+    <string name="presets_save">Save as preset</string>
+    <string name="presets_name">Preset name</string>
+    <string name="presets_name_hint">For example: Fast preview, Final quality</string>
+    <string name="presets_delete">Delete preset %1$s</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
 </resources>

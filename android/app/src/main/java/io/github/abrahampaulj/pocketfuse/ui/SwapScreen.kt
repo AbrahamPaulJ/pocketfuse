@@ -13,7 +13,11 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -68,12 +72,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.abrahampaulj.pocketfuse.PocketfuseApp
 import io.github.abrahampaulj.pocketfuse.R
+import io.github.abrahampaulj.pocketfuse.core.BatchState
 import io.github.abrahampaulj.pocketfuse.core.Connection
 import io.github.abrahampaulj.pocketfuse.core.FaceCheck
 import io.github.abrahampaulj.pocketfuse.core.FaceScope
 import io.github.abrahampaulj.pocketfuse.core.FrameResult
 import io.github.abrahampaulj.pocketfuse.core.StreamPreview
 import io.github.abrahampaulj.pocketfuse.core.SwapProgress
+import io.github.abrahampaulj.pocketfuse.core.SwapOptions
 import io.github.abrahampaulj.pocketfuse.core.SwapRequest
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
@@ -92,6 +98,9 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     val progress by app.jobs.progress.collectAsState()
     val capabilities by connection.capabilities.collectAsState()
     val voice by workspace.voice.collectAsState()
+    val batch by workspace.batch.collectAsState()
+    val batchState by app.jobs.batch.collectAsState()
+    val presets by workspace.presets.collectAsState()
     val recorder = remember { VoiceRecorder(context.applicationContext) }
     var recording by remember { mutableStateOf(false) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -198,6 +207,16 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                     contentAlignment = Alignment.Center,
                 ) { EmptyState(R.drawable.ic_image, stringResource(R.string.swap_target_empty_title), stringResource(R.string.swap_target_empty)) }
             } else {
+                if (batch.size > 1) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.batch_title, batch.size), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        TextButton(onClick = workspace::clearBatch) { Text(stringResource(R.string.batch_clear)) }
+                    }
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(batch, key = { it.uri.toString() }) { media -> MediaThumb(media, Modifier.size(width = 72.dp, height = 72.dp)) }
+                    }
+                    Hint(stringResource(R.string.batch_hint))
+                }
                 BeforeAfter(before = before, after = (preview as? FrameResult.Ready)?.jpeg, fallback = current)
                 Text(current.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 Hint(describeMedia(current))
@@ -245,6 +264,7 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                     onSelect = { value -> workspace.updateOptions { it.with("face_swapper_model", JsonPrimitive(value)) } },
                 )
             }
+            Presets(presets, current = options, onApply = workspace::applyPreset, onDelete = workspace::deletePreset, onSave = workspace::savePreset)
         }
 
         Section(stringResource(R.string.voice_title)) {
@@ -277,21 +297,29 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
             voice?.let { Hint(stringResource(R.string.voice_ready, it.durationMs / 1000.0)) }
         }
 
-        JobPanel(progress, onDismiss = app.jobs::dismiss, onOpenResults = onOpenResults)
+        JobPanel(progress, batchState, onDismiss = app.jobs::dismiss, onOpenResults = onOpenResults, onStopRest = app.jobs::stopRest)
 
         val hasVoice = options.lipSync && voice != null
         val ready = (sources.isNotEmpty() || hasVoice) && target != null && !app.jobs.isRunning
+        if ((sources.isEmpty() && !hasVoice) || target == null) Hint(stringResource(R.string.swap_not_ready), Modifier.fillMaxWidth())
         Button(
             onClick = {
                 val current = target ?: return@Button
-                val problem = MediaInspector.problems(current) { ext -> capabilities?.accepts(ext) ?: true }
-                if (problem != null) Toast.makeText(context, problem.message, Toast.LENGTH_LONG).show()
-                else app.jobs.start(SwapRequest(sources, current, options, voice.takeIf { hasVoice }))
+                val targets = batch.ifEmpty { listOf(current) }
+                val problems = targets.mapNotNull { media -> MediaInspector.problems(media) { ext -> capabilities?.accepts(ext) ?: true } }
+                problems.firstOrNull()?.let { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() }
+                val runnable = targets.filter { media -> MediaInspector.problems(media) { ext -> capabilities?.accepts(ext) ?: true } == null }
+                app.jobs.startAll(runnable.map { SwapRequest(sources, it, options, voice.takeIf { hasVoice }) })
             },
             enabled = ready,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(18.dp),
-        ) { Text(stringResource(R.string.swap_run), style = MaterialTheme.typography.titleMedium) }
+        ) {
+            Text(
+                if (batch.size > 1) stringResource(R.string.swap_run_batch, batch.size) else stringResource(R.string.swap_run),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
         Gap(24.dp)
     }
 }
@@ -346,10 +374,74 @@ private fun BeforeAfter(before: ByteArray?, after: ByteArray?, fallback: LocalMe
     }
 }
 
+/** Saved option sets: tap to apply, x to delete, and one chip to save the current options. */
 @Composable
-private fun JobPanel(progress: SwapProgress?, onDismiss: () -> Unit, onOpenResults: () -> Unit) {
+private fun Presets(presets: Map<String, SwapOptions>, current: SwapOptions, onApply: (String) -> Unit, onDelete: (String) -> Unit, onSave: (String) -> Unit) {
+    var naming by remember { mutableStateOf(false) }
+    Text(stringResource(R.string.presets_title), style = MaterialTheme.typography.titleSmall)
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(presets.keys.sorted(), key = { it }) { name ->
+            InputChip(
+                selected = presets[name] == current,
+                onClick = { onApply(name) },
+                label = { Text(name) },
+                trailingIcon = {
+                    Icon(
+                        painterResource(R.drawable.ic_close),
+                        stringResource(R.string.presets_delete, name),
+                        Modifier.size(16.dp).clickable { onDelete(name) },
+                    )
+                },
+            )
+        }
+        item {
+            AssistChip(
+                onClick = { naming = true },
+                label = { Text(stringResource(R.string.presets_save)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_add), null, Modifier.size(16.dp)) },
+            )
+        }
+    }
+    if (naming) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { naming = false },
+            title = { Text(stringResource(R.string.presets_save)) },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(24) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.presets_name)) },
+                    placeholder = { Text(stringResource(R.string.presets_name_hint)) },
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = name.isNotBlank(), onClick = {
+                    onSave(name)
+                    naming = false
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { naming = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+}
+
+@Composable
+private fun JobPanel(progress: SwapProgress?, batch: BatchState?, onDismiss: () -> Unit, onOpenResults: () -> Unit, onStopRest: () -> Unit) {
     if (progress == null) return
+    val finished = progress is SwapProgress.Done || progress is SwapProgress.Failed
     Section(stringResource(R.string.swap_job)) {
+        if (batch != null) {
+            if (finished) {
+                Text(stringResource(R.string.batch_done, batch.done, batch.total), style = MaterialTheme.typography.titleSmall)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.batch_progress, batch.done + 1, batch.total), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    if (batch.done + 1 < batch.total) TextButton(onClick = onStopRest) { Text(stringResource(R.string.batch_stop_rest)) }
+                }
+            }
+        }
         when (progress) {
             is SwapProgress.Uploading -> {
                 Hint(stringResource(R.string.job_uploading, progress.what))

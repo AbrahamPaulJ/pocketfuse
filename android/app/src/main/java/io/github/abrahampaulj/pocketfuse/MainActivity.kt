@@ -34,12 +34,19 @@ class MainActivity : ComponentActivity() {
         handle(intent)
     }
 
-    /** A shared photo or video becomes the target; a pocketfuse://pair link pairs. */
+    /** A shared photo or video becomes the target, several become a batch; a pocketfuse://pair link pairs. */
     private fun handle(intent: Intent?) {
         when (intent?.action) {
             Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.let { uri ->
                 lifecycleScope.launch {
                     if (app.workspace.setTarget(uri) != null) Toast.makeText(this@MainActivity, R.string.shared_target, Toast.LENGTH_SHORT).show()
+                }
+            }
+            Intent.ACTION_SEND_MULTIPLE -> IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.let { uris ->
+                lifecycleScope.launch {
+                    val media = app.workspace.setBatch(uris)
+                    if (media.size > 1) Toast.makeText(this@MainActivity, getString(R.string.shared_batch, media.size), Toast.LENGTH_SHORT).show()
+                    else if (media.isNotEmpty()) Toast.makeText(this@MainActivity, R.string.shared_target, Toast.LENGTH_SHORT).show()
                 }
             }
             Intent.ACTION_VIEW -> intent.data?.let { Pairing.parse(it.toString()) }?.let { config ->

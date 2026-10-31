@@ -13,7 +13,13 @@ import java.io.File
 /** A swap the user asked for, as handed to [JobService]. */
 data class SwapRequest(val sources: List<LocalMedia>, val target: LocalMedia, val options: SwapOptions, val voice: LocalMedia? = null)
 
-/** The swap in progress (one at a time, as the server allows one queued job per session) and past results. */
+/** How far a batch (several targets shared at once) has got. */
+data class BatchState(val done: Int, val total: Int)
+
+/**
+ * The swap in progress and past results. Several targets run one after another (the server runs one job
+ * per session at a time); a failed target does not stop the rest.
+ */
 class JobCenter(private val context: Context) {
     private val _progress = MutableStateFlow<SwapProgress?>(null)
     val progress: StateFlow<SwapProgress?> = _progress.asStateFlow()
@@ -21,24 +27,41 @@ class JobCenter(private val context: Context) {
     private val _results = MutableStateFlow(scanResults())
     val results: StateFlow<List<File>> = _results.asStateFlow()
 
-    @Volatile
-    var pending: SwapRequest? = null
-        private set
+    private val queue = ArrayDeque<SwapRequest>()
+
+    private val _batch = MutableStateFlow<BatchState?>(null)
+    val batch: StateFlow<BatchState?> = _batch.asStateFlow()
 
     val outputDirectory: File get() = File(context.cacheDir, "outputs").apply { mkdirs() }
 
     val isRunning: Boolean
         get() = _progress.value.let { it != null && it !is SwapProgress.Done && it !is SwapProgress.Failed }
 
-    fun start(request: SwapRequest): Boolean {
-        if (isRunning) return false
-        pending = request
+    fun start(request: SwapRequest): Boolean = startAll(listOf(request))
+
+    fun startAll(requests: List<SwapRequest>): Boolean {
+        if (isRunning || requests.isEmpty()) return false
+        synchronized(queue) {
+            queue.clear()
+            queue.addAll(requests)
+        }
+        _batch.value = if (requests.size > 1) BatchState(0, requests.size) else null
         _progress.value = SwapProgress.Preparing
         ContextCompat.startForegroundService(context, Intent(context, JobService::class.java))
         return true
     }
 
-    internal fun takePending(): SwapRequest? = pending.also { pending = null }
+    internal fun takePending(): SwapRequest? = synchronized(queue) { queue.removeFirstOrNull() }
+
+    internal fun finishedOne() {
+        _batch.value = _batch.value?.let { it.copy(done = it.done + 1) }
+    }
+
+    /** Drops the targets of a batch that have not started; the one running finishes. */
+    fun stopRest() {
+        synchronized(queue) { queue.clear() }
+        _batch.value = _batch.value?.let { it.copy(total = (it.done + 1).coerceAtMost(it.total)) }
+    }
 
     internal fun report(progress: SwapProgress) {
         _progress.value = progress
@@ -46,7 +69,9 @@ class JobCenter(private val context: Context) {
     }
 
     fun dismiss() {
-        if (!isRunning) _progress.value = null
+        if (isRunning) return
+        _progress.value = null
+        _batch.value = null
     }
 
     fun delete(file: File) {
