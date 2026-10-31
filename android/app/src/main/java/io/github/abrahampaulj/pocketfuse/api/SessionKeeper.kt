@@ -20,8 +20,9 @@ sealed interface SessionState {
 }
 
 /**
- * Keeps one FaceFusion session alive. A session lives 10 minutes and both tokens share that expiry, so
- * the keeper rotates them well before it ([REFRESH_EVERY_MS]). When the server says the session is gone
+ * Keeps one FaceFusion session alive. A session lives 10 minutes on `v4-challenge` and 5 minutes on the
+ * `v4` branch, both tokens share that expiry, so the keeper rotates them well before the shorter one
+ * ([REFRESH_EVERY_MS]). The phone's clock is never compared with the server's `expires_at`: they can differ. When the server says the session is gone
  * (401 or 426) the keeper never retries the call that failed: it reports the loss, because the server
  * has already dropped the session's assets and jobs, and opens a new session only when asked.
  */
@@ -100,6 +101,6 @@ class SessionKeeper(
     }
 
     companion object {
-        const val REFRESH_EVERY_MS = 7 * 60 * 1000L
+        const val REFRESH_EVERY_MS = 3 * 60 * 1000L
     }
 }

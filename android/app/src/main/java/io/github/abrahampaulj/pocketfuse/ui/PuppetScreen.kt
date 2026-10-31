@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -157,20 +158,20 @@ fun PuppetScreen(app: PocketfuseApp, connection: Connection) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(18.dp)).background(Color.Black)
+        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(20.dp))
+            .background(if (portraitJpeg == null) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Black)
             .clickable(enabled = !running) { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
             when {
                 output != null -> BytesImage(output, Modifier.fillMaxSize())
                 portraitJpeg != null -> BytesImage(portraitJpeg, Modifier.fillMaxSize())
-                else -> Hint(stringResource(R.string.puppet_pick), Modifier.align(Alignment.Center).padding(24.dp), color = Color.White)
+                else -> EmptyState(R.drawable.ic_tab_puppet, stringResource(R.string.puppet_pick_title), stringResource(R.string.puppet_pick), Modifier.align(Alignment.Center))
             }
             if (output != null) AiLabel(Modifier.align(Alignment.TopStart).padding(12.dp))
             if (running) {
                 AndroidView({ previewView }, Modifier.align(Alignment.BottomEnd).padding(12.dp).width(96.dp).aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)))
-                Text(
+                Badge(
                     if (faceVisible) stringResource(R.string.puppet_fps, fps) else stringResource(R.string.puppet_no_face),
-                    color = Color.White,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).background(Color(0x88000000), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+                    Modifier.align(Alignment.TopEnd).padding(12.dp),
                 )
             }
         }

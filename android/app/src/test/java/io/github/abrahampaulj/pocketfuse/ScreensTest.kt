@@ -71,7 +71,7 @@ class ScreensTest {
     }
 
     @Test
-    fun lab() = shoot("lab") { LabScreen(app, connection) }
+    fun lab() = shoot("lab") { LabScreen(app, connection, onGoToSwap = {}) }
 
     @Test
     fun puppet() = shoot("puppet") { PuppetScreen(app, connection) }

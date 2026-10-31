@@ -50,7 +50,6 @@
     <string name="swap_target">Target</string>
     <string name="swap_pick">Pick</string>
     <string name="swap_change">Change</string>
-    <string name="swap_target_empty">Pick a photo or video, or share one to Pocketfuse from any app</string>
     <string name="swap_preview">Preview on PC</string>
     <string name="swap_previewing">Asking your PC</string>
     <string name="swap_preview_time">One frame in %1$d ms</string>
@@ -73,7 +72,7 @@
     <string name="options_apply">Apply</string>
 
     <string name="results_title">Results</string>
-    <string name="results_empty">Finished swaps appear here.</string>
+    <string name="results_empty">Finished swaps land here, ready to save or share.</string>
     <string name="results_save">Save</string>
     <string name="results_saved">Saved to your gallery</string>
     <string name="results_save_failed">Could not save to the gallery</string>
@@ -107,7 +106,7 @@
     <string name="server_forget">Forget this server</string>
     <string name="live_fps">%1$.1f fps from your PC</string>
     <string name="live_connecting">Connecting</string>
-    <string name="live_need_face">Add a source face on the Swap tab first.</string>
+    <string name="live_need_face">Add the face to use on the Swap tab, then come back.</string>
     <string name="live_idle">Your camera goes to your PC, which swaps every frame on its GPU and streams it back.</string>
     <string name="live_front">Front camera</string>
     <string name="live_microphone">Microphone</string>
@@ -115,7 +114,7 @@
     <string name="live_stop">Stop</string>
     <string name="live_camera_denied">Camera permission is needed for the live stream.</string>
     <string name="live_note">The live stream needs the phone to reach the PC directly: same Wi-Fi or the same tailnet. Frames the content check flags come back blurred.</string>
-    <string name="puppet_pick">Tap to pick a portrait to bring to life</string>
+    <string name="puppet_pick">Pick a portrait. Your head turns and smiles move it, redrawn by your PC.</string>
     <string name="puppet_fps">%1$.1f fps</string>
     <string name="puppet_no_face">Looking for your face</string>
     <string name="puppet_calibrate">Set neutral</string>
@@ -136,11 +135,6 @@
     <string name="lab_need_inputs">Pick a face and a target on the Swap tab first.</string>
     <string name="lab_ms">%1$d ms</string>
     <string name="lab_tap_to_use">Tap a tile to use that setting for your swaps.</string>
-    <string name="live_fps_socket">%1$.1f fps (WebSocket)</string>
-    <string name="live_transport_auto">Auto</string>
-    <string name="live_transport_webrtc">WebRTC</string>
-    <string name="live_transport_socket">WebSocket</string>
-    <string name="live_fell_back">WebRTC could not carry the swapped video (common on mobile data), so Live switched to the WebSocket stream. It is slower but needs only the HTTP port.</string>
     <string name="swap_no_face_badge">no face</string>
     <string name="swap_no_face">Your PC found no face in a photo marked "no face". Use a clear, front-facing photo, or the swap will fail.</string>
     <string name="voice_title">Your voice (lip sync)</string>
@@ -151,4 +145,23 @@
     <string name="voice_recording">Recording</string>
     <string name="voice_use">Lip sync</string>
     <string name="voice_ready">%1$.1f s recorded</string>
+    <string name="connection_ok">Connected</string>
+    <string name="connection_opening">Connecting</string>
+    <string name="connection_lost">Offline</string>
+    <string name="swap_faces_empty_title">Who should appear?</string>
+    <string name="swap_target_empty_title">Pick a photo or video</string>
+    <string name="swap_target_empty">Or share one to Pocketfuse from your gallery or any app.</string>
+    <string name="swap_frame_at">Preview frame at %1$.1f s</string>
+    <string name="swap_before">Before</string>
+    <string name="swap_after">After</string>
+    <string name="swap_remove_face">Remove face</string>
+    <string name="swap_add_face">Add a face</string>
+    <string name="go_to_swap">Go to Swap</string>
+    <string name="live_need_face_title">Live needs a face</string>
+    <string name="live_idle_title">Your camera, swapped live</string>
+    <string name="live_no_video">No swapped video has arrived yet. Live needs UDP between the phone and the PC: the same Wi-Fi or the same tailnet, with no firewall in between.</string>
+    <string name="lab_need_inputs_title">Nothing to compare yet</string>
+    <string name="puppet_pick_title">Bring a portrait to life</string>
+    <string name="results_empty_title">No results yet</string>
+    <string name="lab_downloads">Each model your PC has not used yet is downloaded first, up to 1.6 GB each. Check the PC has the space.</string>
 </resources>

@@ -49,7 +49,9 @@ fun ResultsScreen(jobs: JobCenter) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     if (results.isEmpty()) {
-        Hint(stringResource(R.string.results_empty), Modifier.padding(16.dp))
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            EmptyState(R.drawable.ic_results, stringResource(R.string.results_empty_title), stringResource(R.string.results_empty))
+        }
         return
     }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

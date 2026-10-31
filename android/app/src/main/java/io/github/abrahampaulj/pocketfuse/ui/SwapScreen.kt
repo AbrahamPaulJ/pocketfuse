@@ -8,6 +8,16 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -151,21 +161,27 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                             )
                         }
                         Box(
-                            Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+                            Modifier.align(Alignment.TopEnd).size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                 .clickable { workspace.removeSource(source.uri) },
                             contentAlignment = Alignment.Center,
-                        ) { Text("x", style = MaterialTheme.typography.labelSmall) }
+                        ) { Icon(painterResource(R.drawable.ic_close), stringResource(R.string.swap_remove_face), Modifier.size(14.dp)) }
                     }
                 }
                 item {
                     Box(
                         Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
+                            .border(1.5.dp, Violet.copy(alpha = 0.6f), CircleShape)
                             .clickable { pickSource.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         contentAlignment = Alignment.Center,
-                    ) { Text("+", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+                    ) { Icon(painterResource(R.drawable.ic_add), stringResource(R.string.swap_add_face), tint = Violet, modifier = Modifier.size(28.dp)) }
                 }
             }
-            Hint(stringResource(if (sources.isEmpty()) R.string.swap_faces_empty else R.string.swap_faces_hint))
+            if (sources.isEmpty()) {
+                Text(stringResource(R.string.swap_faces_empty_title), style = MaterialTheme.typography.titleSmall)
+                Hint(stringResource(R.string.swap_faces_empty))
+            } else {
+                Hint(stringResource(R.string.swap_faces_hint))
+            }
             if (faceChecks.values.any { it == FaceCheck.NoFace }) Hint(stringResource(R.string.swap_no_face), color = Bad)
         }
 
@@ -177,16 +193,19 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
             val current = target
             if (current == null) {
                 Box(
-                    Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         .clickable { pickTarget.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
                     contentAlignment = Alignment.Center,
-                ) { Hint(stringResource(R.string.swap_target_empty)) }
+                ) { EmptyState(R.drawable.ic_image, stringResource(R.string.swap_target_empty_title), stringResource(R.string.swap_target_empty)) }
             } else {
                 BeforeAfter(before = before, after = (preview as? FrameResult.Ready)?.jpeg, fallback = current)
                 Text(current.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 Hint(describeMedia(current))
                 if (current.isVideo && current.durationMs > 0) {
-                    Slider(value = previewAtMs, onValueChange = { previewAtMs = it }, valueRange = 0f..current.durationMs.toFloat())
+                    Column {
+                        Hint(stringResource(R.string.swap_frame_at, previewAtMs / 1000f))
+                        Slider(value = previewAtMs, onValueChange = { previewAtMs = it }, valueRange = 0f..current.durationMs.toFloat())
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = { runPreview(current) }, enabled = !previewing && sources.isNotEmpty()) {
@@ -270,8 +289,9 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                 else app.jobs.start(SwapRequest(sources, current, options, voice.takeIf { hasVoice }))
             },
             enabled = ready,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) { Text(stringResource(R.string.swap_run)) }
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(18.dp),
+        ) { Text(stringResource(R.string.swap_run), style = MaterialTheme.typography.titleMedium) }
         Gap(24.dp)
     }
 }
@@ -295,17 +315,33 @@ fun ChoicePicker(label: String?, choices: List<String>, selected: String?, onSel
     }
 }
 
-/** The target frame with the processed preview over it; drag across to compare. */
+/** The target frame with the processed preview over it; drag the divider to compare. */
 @Composable
 private fun BeforeAfter(before: ByteArray?, after: ByteArray?, fallback: LocalMedia) {
     var split by remember { mutableFloatStateOf(0.5f) }
-    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(14.dp)).background(Color.Black)) {
+    var width by remember { mutableFloatStateOf(1f) }
+    Box(
+        Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Color.Black)
+            .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
+            .pointerInput(after != null) {
+                if (after == null) return@pointerInput
+                detectHorizontalDragGestures { change, _ -> split = (change.position.x / width).coerceIn(0f, 1f) }
+            },
+    ) {
         if (before == null) MediaThumb(fallback, Modifier.fillMaxSize(), maxSide = 720)
         else BytesImage(before, Modifier.fillMaxSize())
         if (after != null) {
             BytesImage(after, Modifier.fillMaxSize().clip(RevealShape(split)))
+            val density = LocalDensity.current
+            val x = with(density) { (width * split).toDp() }
+            Box(Modifier.fillMaxHeight().width(2.dp).offset(x = x - 1.dp).background(Color.White))
+            Box(
+                Modifier.align(Alignment.CenterStart).offset(x = x - 16.dp).size(32.dp).clip(CircleShape).background(Color.White),
+                contentAlignment = Alignment.Center,
+            ) { Icon(painterResource(R.drawable.ic_tab_swap), null, tint = Color.Black, modifier = Modifier.size(18.dp)) }
             AiLabel(Modifier.align(Alignment.TopStart).padding(8.dp))
-            Slider(value = split, onValueChange = { split = it }, modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp))
+            Badge(stringResource(R.string.swap_after), Modifier.align(Alignment.BottomStart).padding(8.dp))
+            Badge(stringResource(R.string.swap_before), Modifier.align(Alignment.BottomEnd).padding(8.dp))
         }
     }
 }

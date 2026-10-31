@@ -37,11 +37,11 @@ fun describe(status: Int, operation: Operation): String = when (status) {
         Operation.OpenSession -> "The server refused the API key. Scan the pairing code again."
         else -> "Your session ended. Reconnecting will start a fresh one."
     }
-    426 -> "Your session expired after 10 minutes without a refresh. Reconnecting will start a fresh one."
+    426 -> "Your session expired without a refresh. Reconnecting will start a fresh one."
     404 -> when (operation) {
         Operation.Jobs -> "That job no longer exists on the server."
         Operation.Stream -> "The server could not start a live stream."
-        Operation.CloseSession -> "The server could not clean up the session's files. It ends on its own after 10 minutes."
+        Operation.CloseSession -> "The server could not clean up the session's files. It ends on its own a few minutes later."
         else -> "That file is no longer on the server. Sessions keep files only while they are open."
     }
     409 -> when (operation) {

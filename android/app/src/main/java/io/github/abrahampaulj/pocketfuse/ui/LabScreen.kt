@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -48,11 +50,12 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 
 /** One axis the lab can compare, and how to pick a handful of values from the server's choices. */
-enum class LabAxis(val key: String, val label: Int, val needsEnhancer: Boolean = false, val samples: Int = 8) {
-    SwapModel("face_swapper_model", R.string.lab_axis_model),
+enum class LabAxis(val key: String, val label: Int, val needsEnhancer: Boolean = false, val samples: Int = 8, val downloads: Boolean = false) {
     PixelBoost("face_swapper_pixel_boost", R.string.lab_axis_boost),
+    // Every swap model the PC has not used yet is downloaded first (up to 1.6 GB each): keep the row short.
+    SwapModel("face_swapper_model", R.string.lab_axis_model, samples = 4, downloads = true),
     SwapWeight("face_swapper_weight", R.string.lab_axis_weight, samples = 5),
-    EnhancerModel("face_enhancer_model", R.string.lab_axis_enhancer, needsEnhancer = true),
+    EnhancerModel("face_enhancer_model", R.string.lab_axis_enhancer, needsEnhancer = true, samples = 4, downloads = true),
     EnhancerBlend("face_enhancer_blend", R.string.lab_axis_blend, needsEnhancer = true, samples = 5);
 
     fun values(capabilities: Capabilities): List<JsonElement> {
@@ -70,14 +73,14 @@ private data class LabTile(val value: JsonElement, val result: FrameResult?)
  * `/stream` socket, and the winner is one tap away from becoming the swap's setting.
  */
 @Composable
-fun LabScreen(app: PocketfuseApp, connection: Connection) {
+fun LabScreen(app: PocketfuseApp, connection: Connection, onGoToSwap: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val capabilities by connection.capabilities.collectAsState()
     val sources by app.workspace.sources.collectAsState()
     val target by app.workspace.target.collectAsState()
     val options by app.workspace.options.collectAsState()
-    var axis by remember { mutableStateOf(LabAxis.SwapModel) }
+    var axis by remember { mutableStateOf(LabAxis.PixelBoost) }
     val tiles = remember { mutableStateListOf<LabTile>() }
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
@@ -119,35 +122,44 @@ fun LabScreen(app: PocketfuseApp, connection: Connection) {
                 FilterChip(selected = axis == entry, onClick = { if (!running) axis = entry }, label = { Text(stringResource(entry.label)) })
             }
         }
+        if (axis.downloads) Hint(stringResource(R.string.lab_downloads), color = Warn)
         val ready = capabilities != null && target != null && sources.isNotEmpty() && !running
-        Button(onClick = ::run, enabled = ready, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(if (running) R.string.lab_running else R.string.lab_run))
+        if (target == null || sources.isEmpty()) {
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+                EmptyState(R.drawable.ic_tab_lab, stringResource(R.string.lab_need_inputs_title), stringResource(R.string.lab_need_inputs), action = stringResource(R.string.go_to_swap), onAction = onGoToSwap)
+            }
+        } else {
+            Button(onClick = ::run, enabled = ready, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text(stringResource(if (running) R.string.lab_running else R.string.lab_run))
+            }
         }
-        if (target == null || sources.isEmpty()) Hint(stringResource(R.string.lab_need_inputs))
         status?.let { Hint(it, color = Warn) }
 
         val current = options.overrides[axis.key] ?: capabilities?.get(axis.key)?.default
+        // Tiles take the target's shape, so a wide video is not letterboxed into a square.
+        val tileAspect = target?.takeIf { it.width > 0 && it.height > 0 }?.let { (it.width.toFloat() / it.height).coerceIn(0.5f, 2f) } ?: 1f
         tiles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { tile ->
                     val chosen = tile.value == current
                     Column(
-                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
-                            .border(if (chosen) 2.dp else 1.dp, if (chosen) Violet else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+                        Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .border(2.dp, if (chosen) Violet else Color.Transparent, RoundedCornerShape(16.dp))
                             .clickable(enabled = tile.result is FrameResult.Ready) { app.workspace.updateOptions { it.with(axis.key, tile.value) } },
                     ) {
-                        Box(Modifier.fillMaxWidth().aspectRatio(1f).background(Color.Black)) {
+                        Box(Modifier.fillMaxWidth().aspectRatio(tileAspect)) {
                             when (val result = tile.result) {
                                 is FrameResult.Ready -> {
-                                    BytesImage(result.jpeg, Modifier.fillMaxSize())
+                                    BytesImage(result.jpeg, Modifier.fillMaxSize(), ContentScale.Crop)
                                     AiLabel(Modifier.align(Alignment.TopStart).padding(6.dp))
                                 }
                                 is FrameResult.Failed -> Hint(result.message, Modifier.align(Alignment.Center).padding(8.dp), color = Bad)
-                                null -> Hint("...", Modifier.align(Alignment.Center), color = Color.White)
+                                null -> Pending(Modifier.fillMaxSize())
                             }
                         }
-                        Text(tile.value.asText(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                        (tile.result as? FrameResult.Ready)?.let { Hint(stringResource(R.string.lab_ms, it.millis), Modifier.padding(start = 10.dp, bottom = 8.dp)) }
+                        Text(tile.value.asText(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp))
+                        (tile.result as? FrameResult.Ready)?.let { Hint(stringResource(R.string.lab_ms, it.millis), Modifier.padding(start = 12.dp)) }
+                        Gap(10.dp)
                     }
                 }
                 if (row.size == 1) Box(Modifier.weight(1f))

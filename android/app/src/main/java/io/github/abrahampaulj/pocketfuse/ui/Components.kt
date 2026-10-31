@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -39,7 +44,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
@@ -51,18 +58,50 @@ import kotlinx.coroutines.withContext
 fun Section(title: String, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Column(Modifier.padding(start = 18.dp, end = 10.dp, top = 8.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 trailing()
             }
-            content()
+            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
         }
     }
+}
+
+/** What a screen shows before it has anything: an icon, one line, why, and the one thing to do next. */
+@Composable
+fun EmptyState(icon: Int, title: String, body: String?, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+    Column(modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            Modifier.size(64.dp).clip(CircleShape).background(Brush.linearGradient(listOf(VioletDeep, Violet))),
+            contentAlignment = Alignment.Center,
+        ) { Icon(painterResource(icon), null, tint = Color.White, modifier = Modifier.size(30.dp)) }
+        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        if (body != null) Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        if (action != null) FilledTonalButton(onClick = onAction) { Text(action) }
+    }
+}
+
+/** A tile that is still waiting for the PC. */
+@Composable
+fun Pending(modifier: Modifier = Modifier) {
+    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+    }
+}
+
+/** A small dark badge over video or images: fps, status. */
+@Composable
+fun Badge(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        color = Color.White,
+        modifier = modifier.background(Color(0x99000000), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 @Composable

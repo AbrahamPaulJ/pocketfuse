@@ -2,7 +2,10 @@ package io.github.abrahampaulj.pocketfuse.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -12,8 +15,9 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,6 +26,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import io.github.abrahampaulj.pocketfuse.PocketfuseApp
@@ -81,22 +87,18 @@ private fun Connected(app: PocketfuseApp, connection: Connection, session: Sessi
                     )
                 },
                 navigationIcon = {
-                    if (overlay != null) TextButton(onClick = { overlay = null }) { Text(stringResource(R.string.back)) }
+                    if (overlay != null) IconButton(onClick = { overlay = null }) { Icon(painterResource(R.drawable.ic_back), stringResource(R.string.back)) }
                 },
                 actions = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        StatusDot(
-                            when (session) {
-                                is SessionState.Open -> Ok
-                                SessionState.Opening -> Warn
-                                else -> Bad
-                            },
-                        )
-                        HGap()
-                        Text(connection.config.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (overlay == null) TextButton(onClick = { overlay = Overlay.Results }) { Text(stringResource(R.string.results_title)) }
+                    ConnectionPill(session, onClick = {
+                        overlay = null
+                        tab = Tab.Server
+                    })
+                    if (overlay == null) IconButton(onClick = { overlay = Overlay.Results }) {
+                        Icon(painterResource(R.drawable.ic_results), stringResource(R.string.results_title))
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         bottomBar = {
@@ -118,12 +120,31 @@ private fun Connected(app: PocketfuseApp, connection: Connection, session: Sessi
                 Overlay.Results -> ResultsScreen(app.jobs)
                 null -> when (tab) {
                     Tab.Swap -> SwapScreen(app, connection, onOpenOptions = { overlay = Overlay.Options }, onOpenResults = { overlay = Overlay.Results })
-                    Tab.Live -> LiveScreen(app, connection)
-                    Tab.Lab -> LabScreen(app, connection)
+                    Tab.Live -> LiveScreen(app, connection, onGoToSwap = { tab = Tab.Swap })
+                    Tab.Lab -> LabScreen(app, connection, onGoToSwap = { tab = Tab.Swap })
                     Tab.Puppet -> PuppetScreen(app, connection)
                     Tab.Server -> ServerScreen(connection, onForget = app::unpair)
                 }
             }
         }
+    }
+}
+
+/** Connection state at a glance; tapping it opens the PC tab with the details. */
+@Composable
+private fun ConnectionPill(session: SessionState, onClick: () -> Unit) {
+    val (color, label) = when (session) {
+        is SessionState.Open -> Ok to R.string.connection_ok
+        SessionState.Opening -> Warn to R.string.connection_opening
+        else -> Bad to R.string.connection_lost
+    }
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceContainerHigh).clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StatusDot(color)
+        HGap(8.dp)
+        Text(stringResource(label), style = MaterialTheme.typography.labelMedium)
     }
 }

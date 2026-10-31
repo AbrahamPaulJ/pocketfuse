@@ -41,7 +41,7 @@ API coverage
 
 | Area | Where Pocketfuse uses it |
 |------|--------------------------|
-| Sessions | open with the API key, rotate both tokens every 7 minutes, treat `401` and `426` as "session lost" and never retry the failed call, close on unpair |
+| Sessions | open with the API key, rotate both tokens every 3 minutes (a session lives 10 minutes on `v4-challenge`, 5 on `v4`), treat `401` and `426` as "session lost" and never retry the failed call, close on unpair |
 | State | every swap, preview, live stream, lab tile and puppet frame sets its options; only changed keys are sent |
 | Capabilities | the **All options** screen is built entirely from `GET /capabilities`: a slider for numeric ranges, chips for lists, a menu for choices, a text field for free input. A newer FaceFusion shows its new options with no app update |
 | Assets | multipart upload with progress, `capture` to show the face the PC found in each source photo (or warn that it found none, before a job fails on it), `download` of outputs, uploads remembered per session |
