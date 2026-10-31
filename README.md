@@ -121,7 +121,7 @@ FaceFusion v4 is a service layer that has to be secure, so the client must not u
 - The companion refuses public addresses and always sets an API key. The app shows how you are
   connected (tailnet, LAN, public) and warns when there is no key.
 - Upload limits (512 MiB, 4096 px, accepted formats from `/capabilities`) are checked on the phone before
-  a byte is sent; photos above 4096 px are scaled down on the phone.
+  a byte is sent; photos above 4096 px (2048 px for a source face) are scaled down on the phone.
 - The content analyser is untouched. Frames it flags come back blurred, and the app says so.
 
 

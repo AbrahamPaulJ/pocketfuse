@@ -155,6 +155,21 @@ class FaceFusionClientTest {
     }
 
     @Test
+    fun progressIsPassedOnOncePerWholePercent() {
+        // okio moves 8 KiB per read: a 100 MiB upload is 12,800 reads, and each used to post a notification.
+        val reported = mutableListOf<Float>()
+        val progress = ProgressThrottle { reported += it }
+        val total = 100L * 1024 * 1024
+        var done = 0L
+        while (done < total) {
+            done = minOf(done + 8192, total)
+            progress.report(done, total)
+        }
+        assertEquals(101, reported.size)
+        assertEquals(1f, reported.last(), 0f)
+    }
+
+    @Test
     fun anUnreachableServerSaysSoInWords() = runBlocking {
         val dead = FaceFusionClient("http://127.0.0.1:9")
         try {

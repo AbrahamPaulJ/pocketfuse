@@ -35,11 +35,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** A file to upload: opened lazily so a large video is streamed, never held in memory. */
+/**
+ * A file to upload: opened lazily so a large video is streamed, never held in memory. [temporary] is a copy
+ * the phone made just for this upload, deleted by the caller once the upload is over.
+ */
 class UploadPart(
     val fileName: String,
     val mediaType: String,
     val length: Long,
+    val temporary: File? = null,
     val open: () -> InputStream,
 )
 
@@ -124,11 +128,12 @@ class FaceFusionClient(
         require(parts.isNotEmpty() && parts.size <= MAX_UPLOAD_FILES)
         val total = parts.sumOf { it.length }.coerceAtLeast(1)
         var sent = 0L
+        val progress = ProgressThrottle(onProgress)
         val multipart = MultipartBody.Builder().setType(MultipartBody.FORM).apply {
             parts.forEach { part ->
                 addFormDataPart("file", part.fileName, StreamingBody(part) { delta ->
                     sent += delta
-                    onProgress((sent.toFloat() / total).coerceIn(0f, 1f))
+                    progress.report(sent, total)
                 })
             }
         }.build()
@@ -169,6 +174,7 @@ class FaceFusionClient(
     suspend fun download(assetId: String, into: File, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
         val url = url("/assets/$assetId") { addQueryParameter("action", "download") }
         val partial = File(into.path + PARTIAL_SUFFIX)
+        val progress = ProgressThrottle(onProgress)
         execute(Request.Builder().url(url).get().build(), Operation.Download, longRunning = true, streamBody = true).use { response ->
             val body = response.body!!
             val total = body.contentLength()
@@ -183,7 +189,7 @@ class FaceFusionClient(
                             if (read < 0) break
                             output.write(buffer, 0, read)
                             copied += read
-                            if (total > 0) onProgress(copied.toFloat() / total)
+                            if (total > 0) progress.report(copied, total)
                         }
                     }
                 }
@@ -315,6 +321,22 @@ class FaceFusionClient(
             .readTimeout(60, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .build()
+    }
+}
+
+/**
+ * Passes progress on only when the whole percent changes, so at most 101 times per transfer: okio moves
+ * 8 KiB per read, and a caller that posts a notification per call would otherwise post thousands.
+ */
+internal class ProgressThrottle(private val onProgress: (Float) -> Unit) {
+    private var lastPercent = -1
+
+    fun report(done: Long, total: Long) {
+        val fraction = (done.toFloat() / total).coerceIn(0f, 1f)
+        val percent = (fraction * 100).toInt()
+        if (percent == lastPercent) return
+        lastPercent = percent
+        onProgress(fraction)
     }
 }
 

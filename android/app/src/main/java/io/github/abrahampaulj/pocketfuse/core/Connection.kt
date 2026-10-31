@@ -16,11 +16,14 @@ import io.github.abrahampaulj.pocketfuse.media.LocalMedia
 import io.github.abrahampaulj.pocketfuse.media.MediaInspector
 import io.github.abrahampaulj.pocketfuse.pair.ServerConfig
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 
 sealed interface FaceCheck {
@@ -74,8 +77,13 @@ class Connection(private val context: Context, val config: ServerConfig, scope: 
     suspend fun upload(type: AssetType, media: LocalMedia, onProgress: (Float) -> Unit = {}): String = uploadLock.withLock {
         val key = "$generation|${type.wire}|${media.uri}"
         uploaded[key]?.let { return it }
-        val part = MediaInspector.prepareUpload(context, media)
-        val assetId = keeper.call { upload(type, listOf(part), onProgress) }.first()
+        val part = MediaInspector.prepareUpload(context, media, type)
+        val assetId = try {
+            keeper.call { upload(type, listOf(part), onProgress) }.first()
+        } finally {
+            // The asset id is remembered for the session, so the phone's copy is never read again.
+            part.temporary?.let { file -> withContext(NonCancellable + Dispatchers.IO) { file.delete() } }
+        }
         uploaded[key] = assetId
         assetId
     }
