@@ -53,6 +53,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateMapOf
@@ -104,16 +105,30 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     val presets by workspace.presets.collectAsState()
     val recorder = remember { VoiceRecorder(context.applicationContext) }
     var recording by remember { mutableStateOf(false) }
+    var micBusy by remember { mutableStateOf(false) }
+    fun startRecording() {
+        recording = recorder.start() != null
+        micBusy = !recording
+    }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            recorder.start()
-            recording = true
+        if (granted) startRecording()
+    }
+    // Leaving the tab or rotating mid take: release the microphone and keep what was recorded.
+    DisposableEffect(recorder) {
+        onDispose {
+            recorder.stop()?.let { file ->
+                app.scope.launch {
+                    workspace.setVoice(android.net.Uri.fromFile(file))
+                    workspace.updateOptions { it.copy(lipSync = true) }
+                }
+            }
         }
     }
 
-    var previewAtMs by remember { mutableFloatStateOf(0f) }
-    var preview by remember { mutableStateOf<FrameResult?>(null) }
-    var before by remember { mutableStateOf<ByteArray?>(null) }
+    // Keyed on the target so a new one (picked, or shared in while this screen is open) starts clean.
+    var previewAtMs by remember(target?.uri) { mutableFloatStateOf(0f) }
+    var preview by remember(target?.uri) { mutableStateOf<FrameResult?>(null) }
+    var before by remember(target?.uri) { mutableStateOf<ByteArray?>(null) }
     var previewing by remember { mutableStateOf(false) }
     var previewStatus by remember { mutableStateOf<String?>(null) }
     val faceChecks = remember { mutableStateMapOf<String, FaceCheck>() }
@@ -129,9 +144,6 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
     val pickTarget = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
             val media = workspace.setTarget(uri)
-            preview = null
-            before = null
-            previewAtMs = 0f
             val problem = media?.let { m -> MediaInspector.problems(m) { ext -> capabilities?.accepts(ext) ?: true } }
             if (problem != null) Toast.makeText(context, problem.message, Toast.LENGTH_LONG).show()
         }
@@ -284,8 +296,7 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                 } else {
                     OutlinedButton(onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                            recorder.start()
-                            recording = true
+                            startRecording()
                         } else {
                             micPermission.launch(Manifest.permission.RECORD_AUDIO)
                         }
@@ -295,6 +306,7 @@ fun SwapScreen(app: PocketfuseApp, connection: Connection, onOpenOptions: () -> 
                     }
                 }
             }
+            if (micBusy) Hint(stringResource(R.string.voice_mic_busy), color = Bad)
             voice?.let { Hint(stringResource(R.string.voice_ready, it.durationMs / 1000.0)) }
         }
 

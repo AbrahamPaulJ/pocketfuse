@@ -61,7 +61,8 @@ object MediaInspector {
         var width = 0
         var height = 0
         var duration = 0L
-        if (mimeType.startsWith("video/")) {
+        // A voice recording has no frame size but has a duration; BitmapFactory has nothing to read in it.
+        if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
             MediaMetadataRetriever().use { retriever ->
                 retriever.setDataSource(context, uri)
                 val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
@@ -157,6 +158,7 @@ object MediaInspector {
         "mov" -> "video/quicktime"
         "webm" -> "video/webm"
         "mkv" -> "video/x-matroska"
+        "m4a" -> "audio/mp4"
         else -> "application/octet-stream"
     }
 
