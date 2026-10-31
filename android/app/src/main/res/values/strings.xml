@@ -102,6 +102,7 @@
     <string name="server_wipe_hint">Removes the photos, videos and results this session put on your PC. Results already on the phone stay.</string>
     <string name="server_wipe_busy">Available once the running swap is done.</string>
     <string name="server_wipe_done">Done. This session has no files left on your PC.</string>
+    <string name="server_wipe_left">%1$d files are still in use on your PC and stay there. Try again in a moment.</string>
     <string name="server_jobs">Jobs on the server</string>
     <string name="server_security">Security</string>
     <string name="server_sec_tailnet">Connected over Tailscale: traffic is encrypted end to end by the tailnet.</string>

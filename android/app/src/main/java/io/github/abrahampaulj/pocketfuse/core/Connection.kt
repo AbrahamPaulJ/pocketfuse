@@ -102,14 +102,16 @@ class Connection(private val context: Context, val config: ServerConfig, scope: 
         }
     }
 
-    /** Deletes every upload and result this session put on the PC; throws what the server answered. */
-    suspend fun forgetAll() {
-        uploadLock.withLock {
-            try {
-                keeper.call { deleteAssets() }
-            } finally {
-                uploaded.clear()
-            }
+    /**
+     * Deletes every upload and result this session put on the PC and returns how many are still there;
+     * throws what the server answered. The server answers 200 even for a file Windows holds open, so the count is checked.
+     */
+    suspend fun forgetAll(): Int = uploadLock.withLock {
+        try {
+            keeper.call { deleteAssets() }
+            keeper.call { assets() }.size
+        } finally {
+            uploaded.clear()
         }
     }
 

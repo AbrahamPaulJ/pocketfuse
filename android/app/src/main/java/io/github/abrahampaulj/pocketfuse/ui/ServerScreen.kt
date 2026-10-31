@@ -114,11 +114,12 @@ fun ServerScreen(connection: Connection, onForget: () -> Unit, workspace: Worksp
             }
             if (state is SessionState.Open) {
                 val wiped = stringResource(R.string.server_wipe_done)
+                val wipedPartly = stringResource(R.string.server_wipe_left)
                 OutlinedButton(enabled = !jobsRunning, onClick = {
                     scope.launch {
                         wipeResult = try {
-                            connection.forgetAll()
-                            wiped to true
+                            val left = connection.forgetAll()
+                            if (left == 0) wiped to true else wipedPartly.format(left) to false
                         } catch (exception: ApiException) {
                             exception.userMessage to false
                         } catch (exception: UnreachableException) {
