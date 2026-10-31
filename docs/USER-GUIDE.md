@@ -87,7 +87,9 @@ The key is stored encrypted with the Android Keystore. **Forget this server** on
    the notification opens the result.
 6. **Results** (the gallery icon, top right): play, **Save** to your gallery, **Share**, or **Delete**.
 
-Every result carries an **AI GENERATED** label in the app. Keep it when you publish.
+Every result carries an **AI GENERATED** label in the app. A photo you save or share carries it in its
+pixels. A video carries it on screen and in the share text, but not in its frames, so label it yourself
+when you publish it.
 
 
 5. Several files at once

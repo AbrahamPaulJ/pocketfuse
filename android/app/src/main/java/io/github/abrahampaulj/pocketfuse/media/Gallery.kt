@@ -69,12 +69,14 @@ object Gallery {
             val (format, extension) = encodingOf(file.extension)
             val output = File(file.parentFile, "labelled/" + file.nameWithoutExtension + "." + extension)
             output.parentFile?.mkdirs()
-            val written = output.outputStream().use { bitmap.compress(format, 95, it) }
-            if (written) {
-                output
-            } else {
-                output.delete()
-                null
+            // Written beside it, then renamed over it: a Save and a Share at once, or an app still
+            // reading the last share, never sees half a file.
+            val partial = File.createTempFile("label", ".part", output.parentFile)
+            try {
+                val written = partial.outputStream().use { bitmap.compress(format, 95, it) }
+                if (written && partial.renameTo(output)) output else null
+            } finally {
+                partial.delete()
             }
         } catch (error: OutOfMemoryError) {
             null
