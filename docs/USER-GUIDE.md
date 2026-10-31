@@ -43,9 +43,10 @@ pip install -r requirements.txt
 python pocketfuse.py serve --facefusion-path <path to your facefusion folder>
 ```
 
-Run `pip` and `python` from the same Python environment as FaceFusion (its venv or conda env), so the
-companion starts FaceFusion with the right packages. With an NVIDIA GPU add
-`--execution-providers cuda` at the end.
+The companion itself needs only Python (tested on 3.12 and 3.13) and three small packages. It starts FaceFusion with the
+interpreter it runs on, so either run it from FaceFusion's own environment (its venv or conda env), or
+point it there with `--python-path <FaceFusion's python>`. With an NVIDIA GPU add
+`--execution-providers cuda` at the end; anything the companion does not know goes to FaceFusion.
 
 `serve` picks your tailnet address (or your LAN address), starts the FaceFusion API there with a fresh
 API key, waits until it answers and prints a QR code. Leave the window open: closing it stops the API.
