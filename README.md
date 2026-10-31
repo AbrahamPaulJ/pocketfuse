@@ -1,6 +1,10 @@
 Pocketfuse
 ==========
 
+[![ci](https://github.com/AbrahamPaulJ/pocketfuse/actions/workflows/ci.yml/badge.svg)](https://github.com/AbrahamPaulJ/pocketfuse/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/AbrahamPaulJ/pocketfuse)](https://github.com/AbrahamPaulJ/pocketfuse/releases/latest)
+[![licence](https://img.shields.io/badge/licence-OpenRAIL--AS-blue)](LICENSE.md)
+
 **Your own FaceFusion PC, in your pocket.** Pocketfuse is an Android app and a small Python companion
 built on the FaceFusion v4 API. The PC does the work on its GPU; the phone is where your photos, your
 camera and your attention already are. Nothing goes to a cloud: the phone talks only to your computer,
