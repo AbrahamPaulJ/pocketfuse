@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -110,6 +111,52 @@ class FaceFusionClientTest {
         }
         assertTrue(keeper.state.value is SessionState.Failed)
         assertNull(client.tokens)
+        scope.cancel()
+    }
+
+    @Test
+    fun aCallCaughtByATokenRotationIsSentAgainWithTheNewToken() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        server.enqueue(json("""{"name":"FaceFusion","version":"v4"}"""))
+        server.enqueue(json(tokens, 201))
+        server.enqueue(json("""{"message":"invalid access token"}""", 401))
+        server.enqueue(json("{}"))
+        val keeper = SessionKeeper(client, null, scope)
+        assertTrue(keeper.open() is SessionState.Open)
+        var attempts = 0
+        keeper.call {
+            attempts += 1
+            try {
+                state()
+            } finally {
+                // The refresh lands while the first request, still carrying the old token, is in flight.
+                if (attempts == 1) client.tokens = Tokens("A2", "R2")
+            }
+        }
+        assertEquals(2, attempts)
+        assertTrue(keeper.state.value is SessionState.Open)
+        server.takeRequest()
+        server.takeRequest()
+        assertEquals("Bearer ACCESS", server.takeRequest().getHeader("Authorization"))
+        assertEquals("Bearer A2", server.takeRequest().getHeader("Authorization"))
+        scope.cancel()
+    }
+
+    @Test
+    fun aSecondRefreshJoinsTheOneInFlight() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        server.enqueue(json("""{"name":"FaceFusion","version":"v4"}"""))
+        server.enqueue(json(tokens, 201))
+        server.enqueue(json("""{"access_token":"A2","refresh_token":"R2"}"""))
+        val keeper = SessionKeeper(client, null, scope)
+        assertTrue(keeper.open() is SessionState.Open)
+        val first = launch { keeper.refreshNow() }
+        val second = launch { keeper.refreshNow() }
+        first.join()
+        second.join()
+        assertEquals(3, server.requestCount)
+        assertEquals(Tokens("A2", "R2"), client.tokens)
+        assertTrue(keeper.state.value is SessionState.Open)
         scope.cancel()
     }
 
