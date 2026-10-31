@@ -22,7 +22,7 @@
     <string name="job_done_title">Swap ready</string>
     <string name="job_failed_title">Swap failed</string>
     <string name="error_not_paired">No server is paired.</string>
-    <string name="error_job_unexpected">Something on the phone stopped this swap. Try again, and pick the files again if it happens twice.</string>
+    <string name="error_job_unexpected">This swap stopped on an unexpected error. Try again, and pick the files again if it happens twice.</string>
     <string name="shared_target">Set as the target. Pick a face and swap.</string>
     <string name="paired_with">Paired with %1$s</string>
 

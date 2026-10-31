@@ -163,7 +163,8 @@ class FaceFusionClient(
 
     /**
      * Saves the asset to [into]. The bytes go to a `.part` file renamed only once complete, so a dropped
-     * connection never leaves a truncated result behind; it ends as [UnreachableException].
+     * connection never leaves a truncated result behind; it ends as [UnreachableException], and a phone
+     * too full for the rest as the plain [IOException].
      */
     suspend fun download(assetId: String, into: File, onProgress: (Float) -> Unit = {}): File = withContext(Dispatchers.IO) {
         val url = url("/assets/$assetId") { addQueryParameter("action", "download") }
@@ -187,8 +188,10 @@ class FaceFusionClient(
                     }
                 }
             } catch (exception: IOException) {
+                // A full phone fails the write, not the connection: when the rest could never fit, it is the phone's fault.
+                val phoneFull = total > 0 && partial.length() + (partial.parentFile?.usableSpace ?: 0L) < total
                 partial.delete()
-                throw UnreachableException(host, exception)
+                throw if (phoneFull) exception else UnreachableException(host, exception)
             }
         }
         if (!partial.renameTo(into)) {
