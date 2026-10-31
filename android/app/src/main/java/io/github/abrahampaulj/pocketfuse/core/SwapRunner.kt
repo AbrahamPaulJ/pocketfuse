@@ -2,7 +2,9 @@ package io.github.abrahampaulj.pocketfuse.core
 
 import io.github.abrahampaulj.pocketfuse.api.ApiException
 import io.github.abrahampaulj.pocketfuse.api.AssetType
+import io.github.abrahampaulj.pocketfuse.api.FaceFusionClient
 import io.github.abrahampaulj.pocketfuse.api.JobStatus
+import io.github.abrahampaulj.pocketfuse.api.SessionKeeper
 import io.github.abrahampaulj.pocketfuse.api.SessionState
 import io.github.abrahampaulj.pocketfuse.api.UnreachableException
 import io.github.abrahampaulj.pocketfuse.media.LocalMedia
@@ -79,7 +81,8 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
 
         val started = System.currentTimeMillis()
         while (true) {
-            val job = keeper.call { job(jobId) }
+            // A Wi-Fi roam or a short drop must not abandon a job the PC is still running.
+            val job = keeper.untilReachable { job(jobId) }
             when (job.status) {
                 JobStatus.Completed -> break
                 JobStatus.Failed -> return SwapProgress.Failed(
@@ -96,7 +99,7 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
         // The output asset is registered by a second background task right after the run; give it a moment.
         var outputId: String? = null
         for (attempt in 0 until OUTPUT_WAIT_TRIES) {
-            outputId = keeper.call { assets() }.firstOrNull { it.type == "output" && it.name.startsWith(jobId) }?.id
+            outputId = keeper.untilReachable { assets() }.firstOrNull { it.type == "output" && it.name.startsWith(jobId) }?.id
             if (outputId != null) break
             delay(250)
         }
@@ -107,8 +110,33 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
         return SwapProgress.Done(file, jobId, seconds)
     }
 
+    /**
+     * Runs [block] like [SessionKeeper.call], but asks again with a growing pause while the server cannot
+     * be reached, for up to [UNREACHABLE_MS]; only then does the network error reach the user. Every other
+     * error, a lost session among them, ends the wait at once.
+     */
+    private suspend fun <T> SessionKeeper.untilReachable(block: suspend FaceFusionClient.() -> T): T {
+        val since = System.currentTimeMillis()
+        var pause = RETRY_FIRST_MS
+        while (true) {
+            val failure = try {
+                return call(block)
+            } catch (exception: UnreachableException) {
+                exception
+            } catch (exception: IOException) {
+                UnreachableException(client.host, exception)
+            }
+            if (System.currentTimeMillis() - since + pause > UNREACHABLE_MS) throw failure
+            delay(pause)
+            pause = (pause * 2).coerceAtMost(RETRY_MAX_MS)
+        }
+    }
+
     private companion object {
-        const val POLL_MS = 1000L
+        const val POLL_MS = 500L
         const val OUTPUT_WAIT_TRIES = 40
+        const val UNREACHABLE_MS = 60_000L
+        const val RETRY_FIRST_MS = 1000L
+        const val RETRY_MAX_MS = 5000L
     }
 }
