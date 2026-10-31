@@ -112,11 +112,12 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
 
     /**
      * Runs [block] like [SessionKeeper.call], but asks again with a growing pause while the server cannot
-     * be reached, for up to [UNREACHABLE_MS]; only then does the network error reach the user. Every other
-     * error, a lost session among them, ends the wait at once.
+     * be reached, for up to [UNREACHABLE_MS] from the first failure; only then does the network error reach
+     * the user. The clock starts at the first failure, not the first call: a request that hung until its
+     * read timeout still gets asked again. Every other error, a lost session among them, ends the wait at once.
      */
     private suspend fun <T> SessionKeeper.untilReachable(block: suspend FaceFusionClient.() -> T): T {
-        val since = System.currentTimeMillis()
+        var since = 0L
         var pause = RETRY_FIRST_MS
         while (true) {
             val failure = try {
@@ -126,7 +127,9 @@ class SwapRunner(private val connection: Connection, private val outputDirectory
             } catch (exception: IOException) {
                 UnreachableException(client.host, exception)
             }
-            if (System.currentTimeMillis() - since + pause > UNREACHABLE_MS) throw failure
+            val now = System.currentTimeMillis()
+            if (since == 0L) since = now
+            if (now - since + pause > UNREACHABLE_MS) throw failure
             delay(pause)
             pause = (pause * 2).coerceAtMost(RETRY_MAX_MS)
         }
