@@ -81,21 +81,26 @@ object MediaInspector {
 
     /** Problems the server would answer with 400 / 413 / 415, found before a byte is uploaded. */
     fun problems(media: LocalMedia, acceptedExtensions: (String) -> Boolean): MediaProblem? = when {
-        !acceptedExtensions(media.extension) -> MediaProblem.Unsupported(media.extension)
+        // HEIC / HEIF / AVIF photos are turned into JPEG on the phone (prepareUpload).
+        !acceptedExtensions(media.extension) && !needsJpeg(media) -> MediaProblem.Unsupported(media.extension)
         media.size > FaceFusionClient.MAX_UPLOAD_BYTES -> MediaProblem.TooLarge(media.size)
         // Oversized PHOTOS are scaled down on the phone instead (prepareUpload), videos cannot be.
         media.isVideo && maxOf(media.width, media.height) > FaceFusionClient.MAX_RESOLUTION -> MediaProblem.TooManyPixels(media.width, media.height)
         else -> null
     }
 
+    /** Phone photo formats the server does not read but Android decodes: sent as JPEG. */
+    fun needsJpeg(media: LocalMedia): Boolean = !media.isVideo && media.extension in setOf("heic", "heif", "avif")
+
     /**
-     * Turns [media] into what the server accepts: photos above 4096 px are scaled down, MP4 / MOV / M4A get
+     * Turns [media] into what the server accepts: photos above 4096 px are scaled down, HEIC / HEIF / AVIF
+     * photos become JPEG, MP4 / MOV / M4A get
      * their `moov` atom moved to the front ([Faststart]). Everything else streams straight from the picker.
      */
     suspend fun prepareUpload(context: Context, media: LocalMedia): UploadPart = withContext(Dispatchers.IO) {
         val cache = File(context.cacheDir, "uploads").apply { mkdirs() }
         when {
-            !media.isVideo && maxOf(media.width, media.height) > FaceFusionClient.MAX_RESOLUTION -> {
+            !media.isVideo && (maxOf(media.width, media.height) > FaceFusionClient.MAX_RESOLUTION || needsJpeg(media)) -> {
                 val scaled = File(cache, media.name.substringBeforeLast('.') + ".jpg")
                 decodeScaled(context, media.uri, FaceFusionClient.MAX_RESOLUTION)?.let { bitmap ->
                     scaled.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }

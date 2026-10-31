@@ -104,7 +104,11 @@ class Capabilities(val formats: Map<String, List<String>>, val arguments: Map<St
 
     fun choicesOf(key: String): List<String> = arguments[key]?.choices?.map { it.asText() }.orEmpty()
 
-    fun accepts(extension: String): Boolean = formats.values.any { extension.lowercase() in it }
+    /** Whether the server takes files with this extension; `/capabilities` lists `jpeg` and `tiff`, phones write `jpg` and `tif`. */
+    fun accepts(extension: String): Boolean {
+        val name = extension.lowercase()
+        return formats.values.any { name in it || EXTENSION_ALIASES[name] in it }
+    }
 
     companion object {
         fun parse(root: JsonObject): Capabilities {
@@ -176,3 +180,6 @@ data class Metrics(
 }
 
 internal fun JsonElement.asText(): String = (this as? JsonPrimitive)?.content ?: toString()
+
+/** Extensions a phone writes and the name the server lists them under. */
+val EXTENSION_ALIASES = mapOf("jpg" to "jpeg", "jpe" to "jpeg", "tif" to "tiff", "mpg" to "mpeg")
